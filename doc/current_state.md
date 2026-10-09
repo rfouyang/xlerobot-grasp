@@ -1,5 +1,45 @@
 # 当前进度（2026-10-06 晚 23:10 收工）
 
+## 2026-10-09 晚：重构后的结构（先读这一节）
+
+**现在只有一个项目**：`xlerobot-grasp`（git 仓库，第一次提交是重构前的基线 `450d2fd`）。xlerobot-teleop 和 xlerobot-ui 两只手真机验证通过后会归档，不再运行。
+
+- **怎么跑**：
+  - 只需要运行 `python app/main.py`（或 `launch/start.sh`）。它自己 source ROS，再由 `component/system_check/supervisor.py` 复用或启动机器人进程（`app/robot_main.py`，8011，独立环境 `robot_env/.venv`）和 ROS bringup，然后在 8010 提供页面、抓取 API（`/grasp-api/...`）和到 8011 的转发（`/robot-api`、`/robot-ws`）。
+  - Ctrl+C 只停网页进程，机器人进程会保留，手臂保持原样；`launch/stop.sh --all`（即 `python app/main.py --stop-all`）先回停靠位、关力矩，再停掉全部进程。
+  - Windows 重启后先用管理员 PowerShell 运行 `launch/attach_usb.ps1`。
+- **目录**：
+  - `app/`：入口、API、页面；
+  - `component/`：
+    - `robot/`：机器人进程；
+    - `perception/`：头部帧、目标选择 `target.py`、预览 `preview.py`；
+    - `planning/`：arm、arm_choice、grasp_planning、reach_map、desk_guard、box_placement；
+    - `task/`：`runner.py` 步骤机、`tasks.py` 步骤表、`motion.py`、`checks.py`、bridge、wrist_alignment；
+    - `calibration/`、`system_check/`、`simulation/`、`grasp_generation/`；
+  - `config/`：`settings`、`robot`、`perception`、`planning`、`task`、`voice`、`simulation`、`charuco`；
+  - `util/`；`model/`（权重）；`data/`（标定会话、深度数据）；`log/`（`grasp_*` / `robot_*`）；`launch/`。
+  - 计划和每一页对应哪些模块：`doc/refactor_plan.md`。
+- **页面**（Penpot「XLerobot Grasp」的 08 修订页）：
+  - 键盘控制 `/`；
+  - 物体抓取 `/grasp`：pick_target，离哪边肩膀近用哪只手，也可以手动选左 / 右，可以单步执行；
+  - 抓取摆放 `/pick-place`：放进盒子，只用右手；
+  - 抓取规划 `/planning`：候选漏斗、语义 / 示范重排序、选择算法；
+  - 相机标定 `/calibration`：实时 ChArUco 检测、标定结果、深度对比；
+  - 系统设置 `/settings`：只读自检、重启机器人进程。
+- **今晚的修复**：
+  - 桌面守卫允许动作从低于余量的位置出发，但不能比出发点更靠近桌面（`DeskGuardConfig.START_SLACK_M` = 3 mm）。左手抓取起始位按守卫的算法只有 5.9 cm（余量 6 cm），原来左手所有动作都会被拒绝。
+  - 左手 cuRobo 的桌面余量 6.5 cm。
+  - 头部画面标注单独开了线程，拿 GPU 锁。
+  - 头部相机改为 15 fps。
+- **另一个会话写的部分**（已收进来）：`util/demo_preferences.py` 和 xlerobot-demo 项目，提供 GraspMolmo / DenseMatcher / HOGraspFlow 的候选重排序，默认是 baseline。规划时用桌面守卫检查每一段（`desk_guard.check_segments`）。
+- **还没做**：
+  - **重构后两只手的真机完整抓取各一次**：19:35 左手只走到「到瓶子后方」就被守卫拦下，这个问题上面已经修了；
+  - 语音输入（BytePlus ASR）；
+  - 放到桌面点；
+  - 标定页的采样、计算、验证（现在仍用 `output/scratch_20261006` 里的脚本）；
+  - 旧服务归档。
+
+
 目标：用 GraspGenX + cuRobo v2 + MoveIt 2，让真机 XLeRobot（`xlerobot_smallcircle`）用**右臂**把桌上的小喷雾瓶抓起来，放回原处，再回到休息位。
 
 **状态**：抓取放回已经稳定（白天连续 10 轮全过）。晚上在做两件事，**明天从这里继续**：
