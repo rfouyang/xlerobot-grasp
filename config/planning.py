@@ -259,8 +259,10 @@ class ArmConfig:
     APPROACH_CHECK_OFFSET_M = {"right": 0.0, "left": -0.015}
     # How much higher than measured cuRobo sees the desk for each arm (RealPlanningConfig.TABLE_CLEARANCE_M for the right):
     # the left arm's real path dipped with its fingertips down towards the desk on 2026-10-09 while the plan stayed 8.6
-    # cm above it, so it keeps further up until that is understood.
-    TABLE_CLEARANCE_M = {"right": RealPlanningConfig.TABLE_CLEARANCE_M, "left": 0.06}
+    # cm above it, so it keeps further up until that is understood. The left one is a little above its desk guard margin
+    # (DESK_MARGIN_M, 6 cm): cuRobo's desk is a flat box over the tilted plane and its spheres are not the guard's mesh
+    # points, so a plan at exactly 6 cm came out 5.8 cm by the guard and the approach was refused (2026-10-09 19:35).
+    TABLE_CLEARANCE_M = {"right": RealPlanningConfig.TABLE_CLEARANCE_M, "left": 0.065}
     # The desk guard's margin (m): every mesh point of the arm over the desk stays this far above it, in plans and in
     # every target sent to the real arm. The left arm's is wider until its calibration (2026-10-09) is proven in use.
     DESK_MARGIN_M = {"right": 0.05, "left": 0.06}

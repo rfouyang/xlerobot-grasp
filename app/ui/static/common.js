@@ -1,5 +1,5 @@
-// Shared by both pages: the robot state over the WebSocket, the header's safety controls (one torque switch, rest
-// pose, grasp start pose, stop) and the stop keys. Every request goes to this server, which forwards it:
+// Shared by every page: the robot state over the WebSocket, the top bar's safety controls (one torque switch, stop),
+// the stop keys, and the keyboard page's rest / grasp start pose buttons. Every request goes to this server, which forwards it:
 // /robot-api/* and /robot-ws/* to the motor backend, /grasp-api/* to the grasp backend.
 "use strict";
 
@@ -60,8 +60,15 @@ function notify(text) {
 
 function setBadge(id, text, classes) {
   const element = document.getElementById(id);
+  if (!element) return;
   element.textContent = text;
   element.className = `${BADGE} ${classes}`;
+}
+
+// The robot process's link: the top bar's pill and the sidebar's row.
+function setLink(text, classes) {
+  setBadge("link-badge", text, classes);
+  setBadge("robot-link-badge", text, classes);
 }
 
 const awayText = (away) => Object.entries(away).map(([part, joints]) =>
@@ -192,7 +199,7 @@ function connect() {
       location.reload();
       return;
     }
-    setBadge("link-badge", "已连接", "bg-teal-100 text-teal-800");
+    setLink("● 已连接", "bg-teal-100 text-teal-800");
     sendKeys();
   };
   App.socket.onmessage = (event) => {
@@ -201,7 +208,7 @@ function connect() {
     App.stateListeners.forEach((listener) => listener(state));
   };
   App.socket.onclose = () => {
-    setBadge("link-badge", "重连中", "bg-red-100 text-red-700");
+    setLink("重连中", "bg-red-100 text-red-700");
     setTimeout(connect, 1000);
   };
 }
@@ -241,7 +248,7 @@ App.ready = (async () => {
   let response = await fetch(`${ROBOT_API}/api/config`);
   while (!response.ok) {
     // The motor backend is not up yet: keep trying, the page fills in when it is.
-    setBadge("link-badge", "未启动", "bg-red-100 text-red-700");
+    setLink("未启动", "bg-red-100 text-red-700");
     await new Promise((resolve) => setTimeout(resolve, 2000));
     response = await fetch(`${ROBOT_API}/api/config`);
   }
@@ -251,8 +258,9 @@ App.ready = (async () => {
   document.getElementById("robot-name").textContent = App.config.robot;
   document.getElementById("torque-all").addEventListener("change", onTorque);
   document.getElementById("btn-stop").addEventListener("click", () => post(`${ROBOT_API}/api/stop`));
-  document.getElementById("btn-rest").addEventListener("click", () => onPose("rest", "休息位"));
-  document.getElementById("btn-grasp-start").addEventListener("click", () => onPose("grasp_start", "抓取位"));
+  // The pose buttons are on the keyboard page only.
+  document.getElementById("btn-rest")?.addEventListener("click", () => onPose("rest", "休息位"));
+  document.getElementById("btn-grasp-start")?.addEventListener("click", () => onPose("grasp_start", "抓取位"));
   connect();
   // Heartbeat: the backend's watchdog releases the keys if these stop arriving.
   setInterval(sendKeys, App.config.heartbeat_ms);

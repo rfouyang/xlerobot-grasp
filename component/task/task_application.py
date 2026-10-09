@@ -176,6 +176,11 @@ class GraspApplication:
         result = self.real.set_target(prompt, point, clear)
         return result
 
+    def real_set_arm(self, side: str) -> dict:
+        """The interactive grasp page's arm: auto (the nearer shoulder), left or right."""
+        result = self.real.set_arm(side)
+        return result
+
     def real_stop(self) -> dict:
         """The teleop service's stop: the base halts and every part freezes; the running step then fails."""
         result = self.real.teleop.stop()

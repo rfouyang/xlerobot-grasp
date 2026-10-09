@@ -51,6 +51,9 @@ class DepthPreview:
         self.detector = None
         # The interactive page's own: switching one YOLOE between the two prompt sets re-encodes the text (~0.5 s a frame).
         self.target_detector = None
+        # "place" (the pick-place page): the target view with the boxes framed in orange too; its own YOLOE for them.
+        self.place_asked_at = 0.0
+        self.place_detector = None
         # "target": the head RGB with the interactive page's choice (target() -> {prompt, point, ...}) framed, the one
         # at its point marked; only while that page asks.
         self.target = kwargs.get("target")
@@ -75,6 +78,8 @@ class DepthPreview:
             self.detect_asked_at = self.asked_at
         elif kind == "target":
             self.target_asked_at = self.asked_at
+        elif kind == "place":
+            self.place_asked_at = self.asked_at
         else:
             self.depth_asked_at = self.asked_at
         picture = self.jpeg.get(kind)
@@ -118,7 +123,8 @@ class DepthPreview:
             now = time.monotonic()
             detect = now - self.detect_asked_at < PerceptionConfig.PREVIEW_IDLE_S
             target = self.target is not None and now - self.target_asked_at < PerceptionConfig.PREVIEW_IDLE_S
-            if not (detect or target):
+            place = self.target is not None and now - self.place_asked_at < PerceptionConfig.PREVIEW_IDLE_S
+            if not (detect or target or place):
                 time.sleep(0.1)
                 continue
             if not self.gpu_lock.acquire(timeout=0.05):
@@ -131,12 +137,15 @@ class DepthPreview:
                 if detect:
                     self.jpeg["detect"] = self.framed(frame["color"])
                     steps.append(("detect", time.monotonic()))
-                if target:
+                if target or place:
                     reach = self.reach_overlay(frame) if self.reach_overlay is not None else None
                     steps.append(("reach", time.monotonic()))
                     choice = self.target()
                     steps.append(("target()", time.monotonic()))
-                    self.jpeg["target"] = self.targeted(frame["color"], choice, reach)
+                    if target:
+                        self.jpeg["target"] = self.targeted(frame["color"], choice, reach)
+                    if place:
+                        self.jpeg["place"] = self.targeted(frame["color"], choice, reach, boxes=True)
                     steps.append(("draw", time.monotonic()))
                 if steps[-1][1] - steps[0][1] > 1.0:
                     logger.info("头部画面标注慢：{}", "，".join(f"{name} {(t - steps[k][1]) * 1000:.0f} ms" for k, (name, t) in enumerate(steps[1:])))
@@ -171,7 +180,7 @@ class DepthPreview:
         picture = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, 80])[1].tobytes()
         return picture
 
-    def targeted(self, rgb: np.ndarray, target: dict, reach: dict | None = None) -> bytes:
+    def targeted(self, rgb: np.ndarray, target: dict, reach: dict | None = None, boxes: bool = False) -> bytes:
         """Every detection of the target's prompt (green), the target in magenta with "TARGET" (its last SAM mask when it
         has one, else the detection at its point), and the point as a cross."""
         from util.detection_helper import Detection
@@ -217,6 +226,18 @@ class DepthPreview:
             text = f"{'TARGET ' if selected else ''}{target['prompt']} {detection.score:.2f}"
             cv2.putText(image, text, (x1 + 3, max(18, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 4)
             cv2.putText(image, text, (x1 + 3, max(18, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, colour.tolist(), 2)
+        if boxes:
+            # Where pick-place puts it: every open box YOLOE sees, in orange (the backend picks the nearest one).
+            if self.place_detector is None:
+                from util.detection_helper import DetectionHelper
+
+                self.place_detector = DetectionHelper()
+            for box in self.place_detector.detect(rgb, PlaceConfig.BOX_PROMPTS, conf=PlaceConfig.BOX_CONFIDENCE):
+                x1, y1, x2, y2 = box.box.astype(int)
+                cv2.rectangle(image, (x1, y1), (x2, y2), (0, 140, 255), 3)
+                text = f"PLACE: box {box.score:.2f}"
+                cv2.putText(image, text, (x1 + 3, max(18, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 4)
+                cv2.putText(image, text, (x1 + 3, max(18, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 140, 255), 2)
         if point:
             cv2.drawMarker(image, (int(point[0]), int(point[1])), (0, 0, 255), cv2.MARKER_CROSS, 22, 2)
         if not detections:

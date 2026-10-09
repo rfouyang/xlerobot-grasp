@@ -1,4 +1,4 @@
-"""四个页面：键盘控制（/）、抓取（/grasp）、抓取放置（/pick-place）、交互抓取（/interactive-grasp），共用顶栏和侧边栏。"""
+"""六个页面：键盘控制（/）、物体抓取（/grasp）、抓取摆放（/pick-place）、抓取规划、相机标定、系统设置，共用顶栏和侧边栏。"""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ if str(BASE_DIR) not in sys.path:
 import time
 
 from fastapi import APIRouter, FastAPI, Request, Response
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.testclient import TestClient
@@ -46,19 +47,53 @@ def create_ui() -> APIRouter:
 
     @router.get("/grasp")
     def grasp(request: Request):
-        page = templates.TemplateResponse(request, "grasp.html", {"page": "grasp"})
-        return page
-
-    @router.get("/interactive-grasp")
-    def interactive_grasp(request: Request):
-        """Pick what to grasp: a click on the head image, or its name."""
-        page = templates.TemplateResponse(request, "interactive_grasp.html", {"page": "interactive_grasp"})
+        """物体抓取: pick it up, put it back (the interactive grasp's task)."""
+        page = templates.TemplateResponse(request, "task.html", {
+            "page": "grasp", "action": "pick_target", "place": False, "title": "物体抓取",
+            "subtitle": "抓起来，再放回原处。在头部画面中点选，或输入名称；离哪边肩膀近用哪只手。"})
         return page
 
     @router.get("/pick-place")
     def pick_place(request: Request):
-        """The grasp page's layout with its own task: the bottle into the open box on the desk."""
-        page = templates.TemplateResponse(request, "pick_place.html", {"page": "pick_place"})
+        """抓取摆放: pick it up, put it in the box."""
+        page = templates.TemplateResponse(request, "task.html", {
+            "page": "pick_place", "action": "place_in_box", "place": True, "title": "抓取摆放",
+            "subtitle": "抓起来，放进指定的盒子（桌面位置即将支持）。先选物体，再确认放置位置。"})
+        return page
+
+    @router.get("/interactive-grasp")
+    def interactive_grasp():
+        """The old interactive grasp page is 物体抓取 now."""
+        response = RedirectResponse("/grasp")
+        return response
+
+    @router.get("/planning")
+    def planning(request: Request):
+        page = templates.TemplateResponse(request, "placeholder.html", {
+            "page": "planning", "title": "抓取规划", "subtitle": "研究抓哪里最合适：候选点位、接近路径、腕部对齐，以及从人的 Demo 视频学抓取位置。",
+            "items": ["GraspGenX 候选列表：分数、是否可达、碰撞风险、离示范点的距离",
+                      "选中候选的点位和接近路径预览（只规划不运动）",
+                      "腕部对齐的偏差、建议修正和历史",
+                      "人的 Demo 视频：导入、关键帧、接触点，和候选对照",
+                      "评估记录：每次真机抓取的候选、结果和残余误差"]})
+        return page
+
+    @router.get("/calibration")
+    def calibration(request: Request):
+        page = templates.TemplateResponse(request, "placeholder.html", {
+            "page": "calibration", "title": "相机标定", "subtitle": "桌面 ChArUco 板：头部和左右腕相机的内参、手眼和关节偏置；还有深度对比。",
+            "items": ["ChArUco 标定：采样（覆盖与有效帧）→ 计算 → 独立验证 → 按版本保存和回退",
+                      "深度对比：头部原始深度 / FFS 深度，同一色标、同步缩放、冻结当前帧、导出对比图",
+                      "相机安装座模型随腕部标定自动更新（URDF 和 cuRobo）"]})
+        return page
+
+    @router.get("/settings")
+    def settings(request: Request):
+        page = templates.TemplateResponse(request, "placeholder.html", {
+            "page": "settings", "title": "系统设置", "subtitle": "确认服务、相机与关节可用，再进入遥操作或抓取。",
+            "items": ["自检：服务 → 相机图像 → 关节读数 → 规划依赖 → 汇总（不开力矩）",
+                      "设备自动匹配：按序列号和物理端口给相机、总线分配角色，预览确认后保存",
+                      "重启服务、重新连接异常设备（经 app/supervisor.py）"]})
         return page
 
     @router.get("/ui-api/info")
@@ -85,12 +120,13 @@ def demo_ui() -> None:
     app.include_router(create_ui())
     mount_ui_static(app)
     client = TestClient(app)
-    keyboard, grasp = client.get("/"), client.get("/grasp")
-    assert keyboard.status_code == 200 and 'id="keymap"' in keyboard.text
-    assert grasp.status_code == 200 and 'id="steps"' in grasp.text
-    for name in ("common.js", "keyboard.js", "grasp.js"):
+    pages = {path: client.get(path) for path in ("/", "/grasp", "/pick-place", "/planning", "/calibration", "/settings")}
+    assert all(page.status_code == 200 for page in pages.values()), {path: page.status_code for path, page in pages.items()}
+    assert 'id="keymap"' in pages["/"].text and 'id="steps"' in pages["/grasp"].text and "place" in pages["/pick-place"].text
+    assert client.get("/interactive-grasp", follow_redirects=False).status_code in (302, 307)
+    for name in ("common.js", "keyboard.js", "task.js"):
         assert client.get(f"/static/ui/{name}").status_code == 200
-    logger.info("两个页面与脚本可访问")
+    logger.info("六个页面与脚本可访问")
 
 
 def main() -> None:

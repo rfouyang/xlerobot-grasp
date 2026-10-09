@@ -77,6 +77,11 @@ class TaskRunner:
         self.too_left: dict | None = None
         # How far the shift step turns the bottle right (m), set at planning.
         self.shift_m = 0.0
+        # The page's arm choice for the interactive grasp: None = the nearer shoulder (ArmConfig.CHOICE), else a side.
+        self.arm_override: str | None = None
+        # Each finished step's duration (s), and the wrist camera's last look at the alignment (cm), for the page.
+        self.stage_seconds: dict[str, float] = {}
+        self.align_info: dict | None = None
 
     # --- what the page sees ---
 
@@ -117,7 +122,8 @@ class TaskRunner:
         status = {"stages": [{"name": name, "label": label} for name, label in self.stages], "next": self.next,
                   "running": self.running, "auto": self.auto, "failed": self.failed, "progress": self.progress[-40:],
                   "plan_image": self.plan_image is not None, "align_image": self.align_image is not None,
-                  "action": self.action, "too_left": self.too_left, "target": self.target}
+                  "action": self.action, "too_left": self.too_left, "target": self.target, "arm": self.arm.side,
+                  "arm_override": self.arm_override or "auto", "stage_seconds": self.stage_seconds, "align": self.align_info}
         return status
 
     # --- choosing ---
@@ -138,14 +144,16 @@ class TaskRunner:
         self.align_image = None
         self.motion.pan_offset = 0.0
         self.align_gap = 0.0
+        self.stage_seconds = {}
+        self.align_info = None
         self.use_arm(RIGHT)
         self.apply_target()
         self.report("流程重置：从「准备」开始" + ("（把瓶子往右移）" if action == "move_right" else "（照常抓取，不看是否太靠左）" if ignore_left else ""))
 
     def apply_target(self) -> None:
-        """Perception and the wrist camera look for the pick_target task's chosen object; every other task for the
-        nearest of the default prompt."""
-        chosen = self.target if self.action == "pick_target" else DEFAULT_TARGET
+        """Perception and the wrist camera look for the chosen object in the interactive grasp and in pick-place (both
+        pages let the user pick it); every other task for the nearest of the default prompt."""
+        chosen = self.target if self.action in ("pick_target", "place_in_box") else DEFAULT_TARGET
         self.planning.perception.prompts = (chosen["prompt"],)
         self.planning.perception.point = tuple(chosen["point"]) if chosen["point"] else None
         self.planning.perception.point_area = None
@@ -159,6 +167,16 @@ class TaskRunner:
         result = self.selector.choose(prompt, point, clear)
         if result["ok"]:
             self.apply_target()
+        return result
+
+    def set_arm(self, side: str) -> dict:
+        """The page's arm choice for the interactive grasp: "auto" (the nearer shoulder), "left" or "right"."""
+        if self.running or self.auto:
+            result = {"ok": False, "error": "正在执行，等这一轮结束再选"}
+            return result
+        self.arm_override = None if side == "auto" else side
+        self.report("手臂：" + ("自动（离哪边肩膀近用哪只手）" if side == "auto" else ARMS[side].label))
+        result = {"ok": True, "arm": self.arm_override or "auto"}
         return result
 
     def use_arm(self, arm: Arm) -> None:
@@ -205,6 +223,7 @@ class TaskRunner:
         self.running = True
         label = dict(self.stages)[name]
         self.report(f"开始：{label}")
+        started = time.monotonic()
         ok = False
         motion, checks = self.motion, self.checks
         try:
@@ -264,6 +283,7 @@ class TaskRunner:
                 motion.bridge.stop()
         if ok:
             self.next += 1
+            self.stage_seconds[name] = round(time.monotonic() - started, 1)
             self.report(f"完成：{label}")
         else:
             self.failed = True
@@ -318,7 +338,7 @@ class TaskRunner:
                         f"盒沿高 {(box.rim_z - box.table_z) * 100:.1f} cm，盒底高 {(box.floor_z - box.table_z) * 100:.1f} cm")
         bounds = real_scene.placed.mesh.bounds
         axis = bounds.mean(axis=0)[:2]
-        sides = self.choice.sides(self.action)
+        sides = [self.arm_override] if self.arm_override and self.action == "pick_target" else self.choice.sides(self.action)
         reach = self.choice.advice(float(axis[0]), float(axis[1]), float(bounds[1, 2] - real_scene.scene.table_top_z),
                                    real_scene.scene.table_top_z, sides)
         # The arms the reach maps say reach it, preferred first; if none, the first allowed one tries anyway.
@@ -382,6 +402,7 @@ class TaskRunner:
             if view.shift_m is None:
                 self.report(f"{self.arm.label[0]}腕相机里没找到「{self.alignment.prompts[0]}」（看了 {WristAlignConfig.LOOKS} 次）")
                 return False
+            self.align_info = {"gap_cm": round((WristAlignConfig.SIDE_GAP_M - view.shift_m) * 100, 1), "shift_cm": round(view.shift_m * 100, 1)}
             self.report(f"{self.arm.label[0]}腕相机：瓶子左边缘离定指 {(WristAlignConfig.SIDE_GAP_M - view.shift_m) * 100:+.1f} cm，"
                         f"还要左移 {view.shift_m * 100:+.1f} cm")
             if abs(view.shift_m) <= WristAlignConfig.TOLERANCE_M:

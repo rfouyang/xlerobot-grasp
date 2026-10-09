@@ -34,6 +34,10 @@ class ResetRequest(BaseModel):
     action: Literal["grasp", "move_right", "place_in_box", "pick_target"] = "grasp"
 
 
+class ArmRequest(BaseModel):
+    arm: Literal["auto", "left", "right"]
+
+
 class TargetRequest(BaseModel):
     # A name for YOLOE (English), a click (u, v) in the head image, or clear (back to the default bottle).
     prompt: str | None = None
@@ -87,6 +91,12 @@ def create_real_grasp_api() -> APIRouter:
     def reset(request: ResetRequest | None = None):
         """No body: back to the grasp."""
         response = grasp_context.real_reset(request.action if request else "grasp")
+        return response
+
+    @router.post("/api/real/arm")
+    def arm(request: ArmRequest):
+        """The interactive grasp page's arm choice."""
+        response = grasp_context.real_set_arm(request.arm)
         return response
 
     @router.post("/api/real/target")

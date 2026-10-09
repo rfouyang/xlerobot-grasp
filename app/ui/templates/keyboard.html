@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}键盘控制{% endblock %}
 {% block scripts %}<script src="/static/ui/keyboard.js?v={{ asset_version('keyboard.js') }}" defer></script>{% endblock %}
+{% block subtitle %}按住键盘或按钮移动，松开即停。左臂、右臂、头、底盘都可以控制。{% endblock %}
 {% block content %}
         <section id="overview" class="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4"></section>
 
@@ -31,8 +32,12 @@
 
         <section id="rest-card" class="{{ card }}">
           <div class="{{ card_head }}">
-            <h2 class="{{ card_title }}">休息位</h2>
-            <button id="btn-record-rest" type="button" class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 shadow-2xs hover:bg-gray-50">把当前姿态记为休息位</button>
+            <h2 class="{{ card_title }}">停靠位</h2>
+            <div class="flex flex-wrap gap-2">
+              <button id="btn-rest" type="button" class="{{ button }}">去休息位</button>
+              <button id="btn-grasp-start" type="button" class="{{ button }}">去抓取位</button>
+              <button id="btn-record-rest" type="button" class="{{ button }}">把当前姿态记为休息位</button>
+            </div>
           </div>
           <div id="rest-pose" class="grid gap-4 p-4 sm:grid-cols-3"></div>
         </section>
