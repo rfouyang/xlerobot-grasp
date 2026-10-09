@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}键盘控制{% endblock %}
+{% block scripts %}<script src="/static/ui/keyboard.js?v={{ asset_version('keyboard.js') }}" defer></script>{% endblock %}
+{% block content %}
+        <section id="overview" class="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4"></section>
+
+        <section id="cameras-card" class="{{ card }}">
+          <div class="{{ card_head }}"><h2 class="{{ card_title }}">相机</h2><span id="overlay-info" class="text-xs text-gray-500">15 fps；头部 RGB 上叠加目标检测</span></div>
+          <div id="cameras" class="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-4"></div>
+        </section>
+
+        <div class="grid gap-4 sm:gap-6 xl:grid-cols-3">
+          <section id="keymap-card" class="{{ card }} xl:col-span-2">
+            <div class="{{ card_head }}"><h2 class="{{ card_title }}">键位</h2><span class="text-end text-xs text-gray-500">按住键盘，或按住按钮。腕部顺/逆时针：从手腕往指尖方向看</span></div>
+            <div id="keymap" class="grid gap-6 p-4 sm:grid-cols-2"></div>
+          </section>
+          <section id="joints-card" class="{{ card }}">
+            <div class="{{ card_head }}"><h2 class="{{ card_title }}">关节</h2><span class="text-xs text-gray-500">当前 / 目标（°）</span></div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50"><tr>
+                  <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">关节</th>
+                  <th class="px-4 py-2 text-end text-xs font-medium text-gray-500 uppercase">当前</th>
+                  <th class="px-4 py-2 text-end text-xs font-medium text-gray-500 uppercase">目标</th>
+                </tr></thead>
+                <tbody id="joints" class="divide-y divide-gray-100 font-mono text-xs"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section id="rest-card" class="{{ card }}">
+          <div class="{{ card_head }}">
+            <h2 class="{{ card_title }}">休息位</h2>
+            <button id="btn-record-rest" type="button" class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 shadow-2xs hover:bg-gray-50">把当前姿态记为休息位</button>
+          </div>
+          <div id="rest-pose" class="grid gap-4 p-4 sm:grid-cols-3"></div>
+        </section>
+{% endblock %}

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>XLeRobot {% block title %}{% endblock %}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/preline@5.0.0/dist/preline.js" defer></script>
+    <script src="/static/ui/common.js?v={{ asset_version('common.js') }}" defer></script>
+    {% block scripts %}{% endblock %}
+  </head>
+  <body class="h-full bg-gray-50 text-sm text-gray-800">
+    {% set card = "flex flex-col rounded-xl border border-gray-200 bg-white shadow-2xs" %}
+    {% set card_head = "flex items-center justify-between gap-x-3 border-b border-gray-200 px-4 py-3" %}
+    {% set card_title = "text-sm font-semibold text-gray-800" %}
+    {% set nav_link = "flex w-full items-center gap-x-3 rounded-lg px-2.5 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden" %}
+    {% set button = "inline-flex items-center justify-center gap-x-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-2xs hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50" %}
+    {% set primary = "inline-flex items-center justify-center gap-x-1.5 rounded-lg border border-transparent bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:pointer-events-none disabled:opacity-50" %}
+
+    <!-- Header (Preline Admin layout: sticky header next to a fixed sidebar). The safety controls are on every page. -->
+    <header class="sticky inset-x-0 top-0 z-48 flex w-full flex-wrap border-b border-gray-200 bg-white py-2.5 md:flex-nowrap lg:ps-65">
+      <nav class="flex w-full basis-full items-center gap-x-3 px-4 sm:px-6">
+        <button type="button" class="inline-flex size-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 lg:hidden" aria-haspopup="dialog" aria-expanded="false" aria-controls="sidebar" aria-label="打开导航" data-hs-overlay="#sidebar">
+          <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+        </button>
+        <ol class="flex min-w-0 items-center whitespace-nowrap">
+          <li class="flex items-center text-sm text-gray-500">控制台<svg class="mx-2 size-4 shrink-0 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6" /></svg></li>
+          <li class="truncate text-sm font-semibold text-gray-800">{{ self.title() }}</li>
+        </ol>
+        <div class="ms-auto flex items-center gap-x-2">
+          <span id="keys-badge" class="hidden items-center rounded-md bg-gray-100 px-2 py-1 font-mono text-xs text-gray-600 sm:inline-flex">按键：无</span>
+          <label for="torque-all" class="flex cursor-pointer items-center gap-x-2 rounded-lg border border-gray-200 px-3 py-1.5 shadow-2xs">
+            <input id="torque-all" type="checkbox" class="relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full border border-gray-200 bg-gray-100 p-px transition-colors duration-200 checked:border-blue-600 checked:bg-blue-600 disabled:pointer-events-none disabled:opacity-50 before:inline-block before:size-5 before:translate-x-0 before:rounded-full before:bg-white before:shadow-sm before:transition before:duration-200 checked:before:translate-x-full" />
+            <span id="torque-all-label" class="text-sm font-medium text-gray-800">力矩关</span>
+          </label>
+          <button id="btn-rest" type="button" class="{{ button }}">休息位</button>
+          <button id="btn-grasp-start" type="button" class="{{ button }}">抓取位</button>
+          <button id="btn-stop" type="button" class="inline-flex items-center gap-x-2 rounded-lg border border-transparent bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700">
+            停止 <kbd class="rounded bg-red-700 px-1.5 py-0.5 font-mono text-xs">Esc / 空格</kbd>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Sidebar: the two pages -->
+    <aside id="sidebar" class="hs-overlay hs-overlay-open:translate-x-0 fixed inset-y-0 start-0 z-60 hidden h-full w-65 -translate-x-full transform border-e border-gray-200 bg-white transition-all duration-300 lg:end-auto lg:bottom-0 lg:block lg:translate-x-0" role="dialog" tabindex="-1" aria-label="导航">
+      <div class="flex h-full max-h-full flex-col">
+        <div class="flex items-center gap-x-3 px-6 pt-4 pb-3">
+          <span class="inline-flex size-9 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">XL</span>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-gray-800">XLeRobot</p>
+            <p id="robot-name" class="truncate font-mono text-xs text-gray-500">…</p>
+          </div>
+        </div>
+        <nav class="flex-1 overflow-y-auto px-3 pb-3">
+          <ul class="flex flex-col space-y-1">
+            <li><a class="{{ nav_link }} {{ 'bg-gray-100 font-medium' if page == 'keyboard' }}" href="/">
+              <svg class="size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" /></svg>键盘控制</a></li>
+            <li><a class="{{ nav_link }} {{ 'bg-gray-100 font-medium' if page == 'grasp' }}" href="/grasp">
+              <svg class="size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M7 3v7a5 5 0 0 0 10 0V3" /><path d="M12 15v6" /></svg>抓取</a></li>
+            <li><a class="{{ nav_link }} {{ 'bg-gray-100 font-medium' if page == 'pick_place' }}" href="/pick-place">
+              <svg class="size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 10h16v10H4z" /><path d="M8 10V6h8v4" /></svg>抓取放置</a></li>
+            <li><a class="{{ nav_link }} {{ 'bg-gray-100 font-medium' if page == 'interactive_grasp' }}" href="/interactive-grasp">
+              <svg class="size-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 4v9l-2-2-2 2 5 7h8l2-8-6-2V4a1.5 1.5 0 0 0-3 0z" /></svg>交互抓取</a></li>
+          </ul>
+          <div class="mt-5 rounded-lg border border-gray-200 p-3 text-xs text-gray-600">
+            <p class="mb-1 font-medium text-gray-800">规则</p>
+            <p>操作从停靠位（休息位或抓取位，两者只差头部朝向）开始、到停靠位结束：所有手臂和头都在其中一个附近才能打开力矩；关力矩、停服务都先慢慢回到最近的停靠位再断。零位只用于标定。</p>
+          </div>
+        </nav>
+        <div class="space-y-2 border-t border-gray-200 px-6 py-3 text-xs">
+          <div class="flex items-center justify-between"><span class="text-gray-500">电机后台</span><span id="link-badge" class="rounded-md bg-gray-100 px-2 py-0.5 font-medium text-gray-600">未连接</span></div>
+          <div class="flex items-center justify-between"><span class="text-gray-500">控制循环</span><span id="loop-badge" class="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-gray-600">—</span></div>
+          <div class="flex items-center justify-between"><span class="text-gray-500">抓取后台</span><span id="grasp-link-badge" class="rounded-md bg-gray-100 px-2 py-0.5 font-medium text-gray-600">—</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="w-full lg:ps-65">
+      <div class="space-y-4 p-4 sm:space-y-6 sm:p-6">
+        <div id="loop-alert" class="hidden rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+          <span class="font-semibold">控制循环已停止。</span>按键不再起作用，底盘已停，已上力矩的部件停在最后的目标。看电机后台的日志，重启它。
+        </div>
+        <div id="focus-alert" class="hidden rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800" role="alert">
+          <span class="font-semibold">页面没有键盘焦点。</span>所有按键已松开，点一下页面再操作。
+        </div>
+        <div id="action-alert" class="hidden rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800" role="alert"></div>
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </body>
+</html>

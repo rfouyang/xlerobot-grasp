@@ -1,0 +1,23 @@
+[project]
+name = "xlerobot-robot"
+version = "0.1.0"
+description = "The robot process of xlerobot-grasp (motors, cameras, keyboard teleop): lerobot cannot share the main environment (GraspGenX pins diffusers / huggingface-hub far below it)"
+requires-python = "==3.12.*"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "jinja2",
+    "loguru",
+    "python-dotenv",
+    "numpy",
+    # The local lerobot checkout with XLeRobot's robot copied in (~/workspace/app/lerobot, v0.4.2).
+    "lerobot[feetech,intelrealsense]",
+    # FastAPI's TestClient (used by the demos) needs the 0.x API.
+    "httpx<1",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+lerobot = { path = "../../../app/lerobot", editable = true }

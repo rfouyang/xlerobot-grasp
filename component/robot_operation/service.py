@@ -11,7 +11,7 @@ if str(BASE_DIR) not in sys.path:
 
 from loguru import logger
 
-from config.settings import RobotConfig, use_utf8_output
+from config.settings import MoveItConfig, use_utf8_output
 from util.moveit_helper import MoveItHelper
 
 
@@ -27,9 +27,9 @@ class RobotOperation:
     def poses(self) -> dict[str, dict]:
         """{"right": {"label": "右臂", "arm": [...], "gripper": [...]}, "left": {...}}"""
         poses = {}
-        for arm, groups in RobotConfig.ARMS.items():
+        for arm, groups in MoveItConfig.ARMS.items():
             poses[arm] = {
-                "label": RobotConfig.ARM_LABELS[arm],
+                "label": MoveItConfig.ARM_LABELS[arm],
                 "arm": self.moveit.named_states.get(groups["arm"], []),
                 "gripper": self.moveit.named_states.get(groups["gripper"], []),
             }
@@ -37,7 +37,7 @@ class RobotOperation:
 
     def move(self, arm: str, part: str, pose: str) -> bool:
         """part is "arm" or "gripper"; blocks until the motion is done."""
-        group = RobotConfig.ARMS[arm][part]
+        group = MoveItConfig.ARMS[arm][part]
         moved = self.moveit.move_to_named_state(group, pose)
         logger.info("{} {} -> {}：{}", arm, part, pose, "完成" if moved else "规划失败")
         return moved

@@ -100,7 +100,7 @@ def demo_desk_guard() -> None:
     from component.real_robot.arm import LEFT
 
     guard = DeskGuard()
-    session = BASE_DIR / "output" / "calibration" / "left_board_20261009"
+    session = BASE_DIR / "data" / "calibration" / "left_board_20261009"
     for path in sorted(session.glob("pose_*_joints.json")):
         real = json.loads(path.read_text())["measured_real"]["left_arm"]
         ok, clearance, link = guard.check_real(LEFT, real)

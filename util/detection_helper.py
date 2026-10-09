@@ -31,7 +31,7 @@ class Detection:
 
 class DetectionHelper:
     """ultralytics looks for the weights and fetches the text encoder (mobileclip2_b.ts) in the working directory,
-    so loading and prompting run inside MODEL_DIR: everything stays in ~/workspace/model/yoloe."""
+    so loading and prompting run inside MODEL_DIR: everything stays in the project's model/yoloe."""
 
     def __init__(self, model_dir: Path = PerceptionConfig.MODEL_DIR, **kwargs) -> None:
         from ultralytics import YOLOE

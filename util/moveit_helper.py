@@ -20,17 +20,17 @@ from moveit_msgs.msg import RobotTrajectory as RobotTrajectoryMsg
 from rclpy.duration import Duration
 from trajectory_msgs.msg import JointTrajectoryPoint
 
-from config.settings import RobotConfig, use_utf8_output
+from config.settings import MoveItConfig, use_utf8_output
 
 
 class MoveItHelper:
     """Plans and executes in-process; needs the bringup launch (ros2_control) to be running."""
 
-    def __init__(self, package_name: str = RobotConfig.MOVEIT_PACKAGE, **kwargs) -> None:
-        builder = MoveItConfigsBuilder(kwargs.get("robot_name", RobotConfig.ROBOT_NAME), package_name=package_name)
-        builder.moveit_cpp(file_path=kwargs.get("moveit_cpp_file", RobotConfig.MOVEIT_CPP_FILE))
+    def __init__(self, package_name: str = MoveItConfig.MOVEIT_PACKAGE, **kwargs) -> None:
+        builder = MoveItConfigsBuilder(kwargs.get("robot_name", MoveItConfig.ROBOT_NAME), package_name=package_name)
+        builder.moveit_cpp(file_path=kwargs.get("moveit_cpp_file", MoveItConfig.MOVEIT_CPP_FILE))
         config = builder.to_moveit_configs().to_dict()
-        self.robot = MoveItPy(node_name=kwargs.get("node_name", RobotConfig.NODE_NAME), config_dict=config)
+        self.robot = MoveItPy(node_name=kwargs.get("node_name", MoveItConfig.NODE_NAME), config_dict=config)
         self.monitor = self.robot.get_planning_scene_monitor()
         # group -> names of its <group_state>s, read from the SRDF MoveIt was given.
         self.named_states = self.parse_named_states(config["robot_description_semantic"])

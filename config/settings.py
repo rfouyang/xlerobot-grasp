@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# graspgenx clones its weights at import time when this is unset; the shared copy lives in ~/workspace/model.
-os.environ.setdefault("GRASPGENX_CHECKPOINT_DIR", str(Path.home() / "workspace" / "model" / "graspgenx"))
+# graspgenx clones its weights at import time when this is unset; they live in the project's model/ (PathConfig.MODEL_DIR).
+os.environ.setdefault("GRASPGENX_CHECKPOINT_DIR", str(BASE_DIR / "model" / "graspgenx"))
 # WSL runs with mirrored networking, where DDS discovery breaks; ROS 2 goes through the Zenoh router instead.
 os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_zenoh_cpp")
 # MuJoCo renders offscreen through EGL. PyOpenGL fixes its platform on first import (graspgenx pulls it in
@@ -34,13 +34,21 @@ class PathConfig:
     # package:// URIs in the URDF resolve under this folder.
     ROS_SRC_DIR = BASE_DIR / "ros_ws" / "src"
     URDF_PATH = ROS_SRC_DIR / "xlerobot_description" / "urdf" / "xlerobot.urdf"
+    # Model weights (not in git).
+    MODEL_DIR = BASE_DIR / "model"
+    # Captured data: calibration sessions, depth evaluation frames.
+    DATA_DIR = BASE_DIR / "data"
+    # Both processes' logs (grasp_*.log, robot_*.log).
+    LOG_DIR = BASE_DIR / "log"
+    # What the programs make: caches, plan pictures, videos.
     OUTPUT_DIR = BASE_DIR / "output"
     # Demos write here and only here.
     DEMO_DIR = OUTPUT_DIR / "demo"
-    LOG_DIR = OUTPUT_DIR / "logs"
+    # The robot process runs in its own environment (lerobot cannot share this one, see robot_env/pyproject.toml).
+    ROBOT_PYTHON = BASE_DIR / "robot_env" / ".venv" / "bin" / "python"
 
 
-class RobotConfig:
+class MoveItConfig:
     ROBOT_NAME = "xlerobot"
     MOVEIT_PACKAGE = "xlerobot_moveit_config"
     # Relative to the MoveIt config package.
@@ -367,8 +375,8 @@ class HeadCameraConfig:
     """The head camera calibrated against the right arm, at the grasp start pose's head angles (the head stays there
     for grasping).
 
-    The depth scale comes from a ChArUco board on the desk (output/calibration/session_20261006): the RealSense reads
-    ~1 % too far. The extrinsics come from the jaw itself at 16 grasp-like arm poses (output/calibration/
+    The depth scale comes from a ChArUco board on the desk (data/calibration/session_20261006): the RealSense reads
+    ~1 % too far. The extrinsics come from the jaw itself at 16 grasp-like arm poses (data/calibration/
     jaw_20261006: trimmed ICP of the head depth onto the jaw and wrist meshes), so what the head sees lines up with
     where the arm goes when grasping. The board's extrinsics (measured through the arm far from grasping poses)
     overshot along the camera's depth by ~2 cm at the grasp (11:39) and are not used."""
@@ -511,7 +519,7 @@ class WristAlignConfig:
 class PerceptionConfig:
     """Open-vocabulary detection + segmentation (YOLOE) on the head RGB-D image."""
 
-    MODEL_DIR = Path.home() / "workspace" / "model" / "yoloe"
+    MODEL_DIR = PathConfig.MODEL_DIR / "yoloe"
     # YOLOE-26 large, segmentation; its text encoder (mobileclip2_b.ts) sits in MODEL_DIR too.
     WEIGHTS = "yoloe-26l-seg.pt"
     # "small spray bottle" / "spray bottle" score <= 0.06 on the target; "bottle" finds it at 0.73 (and the water
@@ -531,7 +539,7 @@ class PerceptionConfig:
     # click), and so is the target at every later look while it has a point; the prompt-free YOLOE only names it: its
     # detection overlapping SAM's mask most (by IoU, at least PICK_NAME_IOU). False: YOLOE alone.
     SEGMENT_BY_POINT = True
-    SAM_WEIGHTS = Path.home() / "workspace" / "model" / "sam3" / "sam3.1_multiplex.pt"
+    SAM_WEIGHTS = PathConfig.MODEL_DIR / "sam3" / "sam3.1_multiplex.pt"
     # SAM's input size: a multiple of its patch stride 14 (1024 is rounded up to this anyway).
     SAM_IMGSZ = 1036
     PICK_NAME_IOU = 0.3
@@ -556,7 +564,7 @@ class PerceptionConfig:
     # Fast-FoundationStereo (research checkpoint 23-36-37, the most accurate of the family: ~50 ms at 640x480 on a
     # 3090, 653 MB peak). Run from its checkout like LingBot-Depth.
     FFS_DIR = Path.home() / "workspace" / "app" / "fast-foundationstereo"
-    FFS_WEIGHTS = Path.home() / "workspace" / "model" / "fast-foundationstereo" / "23-36-37" / "model_best_bp2_serialize.pth"
+    FFS_WEIGHTS = PathConfig.MODEL_DIR / "fast-foundationstereo" / "23-36-37" / "model_best_bp2_serialize.pth"
     FFS_VALID_ITERS = 8
     FFS_MAX_DISP = 192
     # Stereo depth outside this (m) is dropped: nearer than the D415 can match, or the room behind the desk.
@@ -617,12 +625,44 @@ class ByteplusTtsConfig:
 
 
 class ServerConfig:
-    # A backend: the pages are xlerobot-ui's (8010), which forwards /grasp-api/* here; nothing else reaches it.
-    HOST = "127.0.0.1"
-    PORT = 8012
+    """app/main.py: the pages, the grasp API (under /grasp-api) and the forwarding to the robot process; the only port a
+    browser opens (the iPad too, hence every interface)."""
+
+    HOST = "0.0.0.0"
+    PORT = 8010
     LOG_LEVEL = "INFO"
     # How often the page's joint table is pushed over the WebSocket.
     STATE_PUSH_INTERVAL_S = 0.1
+
+
+class RobotServerConfig:
+    """The robot process (app/robot_main.py): motors, cameras, keyboard teleop. app/main.py starts it and forwards
+    the pages' /robot-api/* and /robot-ws/* here; nothing outside this machine reaches it."""
+
+    HOST = "127.0.0.1"
+    PORT = 8011
+    LOG_LEVEL = "INFO"
+    # How often the page gets the robot state over the WebSocket.
+    STATE_PUSH_INTERVAL_S = 0.1
+    URL = f"http://{HOST}:{PORT}"
+    CONNECT_TIMEOUT_S = 3.0
+    # app/supervisor.py: started from app/main.py; healthy when /api/status answers; restarted after this many failed
+    # checks in a row (one every CHECK_S).
+    START_TIMEOUT_S = 90.0
+    CHECK_S = 5.0
+    RESTART_AFTER_FAILS = 3
+
+
+class BringupConfig:
+    """The ROS 2 bringup app/main.py starts when it is not running (robot_state_publisher + ros2_control's mock, which
+    MoveIt plans against); the Zenoh router is the systemd service rmw-zenohd."""
+
+    LAUNCH = ("xlerobot_moveit_config", "bringup.launch.py")
+    PROCESS = "/opt/ros/jazzy/lib/controller_manager/ros2_control_node"
+    ROS_SETUP = "/opt/ros/jazzy/setup.bash"
+    WORKSPACE_SETUP = BASE_DIR / "ros_ws" / "install" / "setup.bash"
+    SETTLE_S = 12.0
+    ZENOH_SERVICE = "rmw-zenohd"
 
 
 class ArmConfig:

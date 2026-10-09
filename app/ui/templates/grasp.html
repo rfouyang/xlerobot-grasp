@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}抓取{% endblock %}
+{% block scripts %}<script>window.GRASP_PAGE_ACTIONS = "{% block page_actions %}grasp,move_right{% endblock %}";</script>
+<script src="/static/ui/grasp.js?v={{ asset_version('grasp.js') }}" defer></script>{% endblock %}
+{% set tile = "flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs" %}
+{% set tile_view = "relative aspect-[4/3] bg-gray-900 lg:aspect-auto lg:min-h-0 lg:flex-1" %}
+{% set tile_caption = "flex items-center justify-between gap-x-2 px-3 py-1.5 text-xs" %}
+{% block content %}
+        <!-- One screen on large displays: the steps in a narrow column, next to a 3 x 2 grid (five views and the
+             progress) whose rows share the height (header 57 px + the page padding: 7rem). Smaller screens stack. -->
+        <div class="grid gap-4 lg:h-[calc(100dvh-7rem)] lg:grid-cols-[minmax(20rem,24rem)_1fr]">
+          <div class="flex min-h-0 flex-col gap-4">
+            <section class="{{ card }} min-h-0 lg:flex-1">
+              <div class="{{ card_head }}">
+                <h2 class="{{ card_title }}">{% block flow_title %}流程（右臂）{% endblock %}</h2>
+                <span id="grasp-state" class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">—</span>
+              </div>
+              <div class="min-h-0 space-y-3 overflow-y-auto p-3">
+                <button id="btn-next" type="button" class="{{ primary }} w-full">执行下一步</button>
+                <div class="grid grid-flow-col auto-cols-fr gap-2">
+                  <button id="btn-run-all" type="button" class="{{ button }} whitespace-nowrap">完整运行</button>
+                  <button id="btn-reset" type="button" class="{{ button }} whitespace-nowrap">重置流程</button>
+                  {% block extra_buttons %}<button id="btn-move-right" type="button" class="{{ button }} whitespace-nowrap">瓶子右移</button>{% endblock %}
+                </div>
+                {% block too_left %}
+                <!-- A grasp stopped at planning because the bottle stands too far left: the user picks what comes next. -->
+                <div id="too-left" class="hidden rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">
+                  <p id="too-left-text"></p>
+                  <div class="mt-2 flex gap-2">
+                    <button id="btn-too-left-move" type="button" class="{{ primary }}">把瓶子往右移</button>
+                    <button id="btn-too-left-grasp" type="button" class="{{ button }}">照常抓取</button>
+                  </div>
+                </div>
+                {% endblock %}
+                {% block target_panel %}{% endblock %}
+                <ol id="steps" class="grid gap-1"></ol>
+                <p class="text-xs text-gray-500">{% block flow_note %}GraspGenX + cuRobo 规划，真机跟随 MoveIt（2 倍慢放）。{% endblock %}停止 / Esc / 空格随时有效。</p>
+              </div>
+            </section>
+          </div>
+
+          <!-- The five views the user asked for, and the progress: row 1 the head (RGB, the live depth raw and refined),
+               row 2 the left and right wrist cameras and the progress. Three camera streams only: a browser keeps at
+               most six connections to one site, and each stream holds one. The cameras fill their slots by name. -->
+          <div class="grid min-h-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2">
+            {% block head_view %}<div id="cam-slot-head" class="contents"></div>{% endblock %}
+            <figure class="{{ tile }}">
+              <div class="{{ tile_view }}">
+                <img id="depth_raw-image" class="absolute inset-0 hidden h-full w-full object-contain" alt="头部传感器深度" />
+                <p id="depth_raw-empty" class="absolute inset-0 m-auto h-fit text-center text-xs text-gray-400">等待抓取后台</p>
+              </div>
+              <figcaption class="{{ tile_caption }}">
+                <span class="shrink-0 font-medium whitespace-nowrap text-gray-700">头部传感器深度</span><span class="truncate text-gray-400">蓝 近 · 红 远 · 黑 无深度</span>
+              </figcaption>
+            </figure>
+            <figure class="{{ tile }}">
+              <div class="{{ tile_view }}">
+                <img id="depth_refined-image" class="absolute inset-0 hidden h-full w-full object-contain" alt="头部 FFS 深度" />
+                <p id="depth_refined-empty" class="absolute inset-0 m-auto h-fit text-center text-xs text-gray-400">等待抓取后台</p>
+              </div>
+              <figcaption class="{{ tile_caption }}">
+                <span class="shrink-0 font-medium whitespace-nowrap text-gray-700">头部 FFS 深度（规划用）</span><span class="truncate text-gray-400">和传感器深度同一色标</span>
+              </figcaption>
+            </figure>
+            <div id="cam-slot-left_wrist" class="contents"></div>
+            <div id="cam-slot-right_wrist" class="contents"></div>
+            <section class="{{ card }} h-72 lg:h-auto lg:min-h-0">
+              <div class="flex items-center justify-between border-b border-gray-200 px-3 py-1.5"><h2 class="text-xs font-semibold text-gray-800">进度</h2></div>
+              <ol id="progress" class="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 font-mono text-xs text-gray-700"></ol>
+            </section>
+          </div>
+        </div>
+{% endblock %}

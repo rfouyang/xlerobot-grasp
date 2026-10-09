@@ -1,0 +1,38 @@
+{% extends "grasp.html" %}
+{# Interactive grasp: the grasp page's layout and steps on an object the user picks, by a click on the head image or by
+   its name. Child blocks do not see grasp.html's top-level classes, so they are spelled out here. #}
+{% block title %}交互抓取{% endblock %}
+{% block page_actions %}pick_target{% endblock %}
+{% block flow_title %}交互抓取（自动选手）{% endblock %}
+{% block extra_buttons %}{% endblock %}
+{% block too_left %}{% endblock %}
+{% block target_panel %}
+                <div class="space-y-2 rounded-lg border border-gray-200 p-3">
+                  <div class="flex items-center justify-between gap-x-2 text-xs">
+                    <span class="shrink-0 font-medium text-gray-800">抓取目标</span>
+                    <span id="target-label" class="truncate font-mono text-gray-600">—</span>
+                  </div>
+                  <form id="target-form" class="flex gap-2">
+                    <input id="target-text" type="text" autocomplete="off" placeholder="物体名称（英文），如 bottle、cup"
+                           class="block w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50" />
+                    <button id="btn-target-text" type="submit" class="inline-flex shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 shadow-2xs hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50">查找</button>
+                  </form>
+                  <p id="target-reach" class="hidden text-xs"></p>
+                  <div class="flex items-center justify-between gap-x-2 text-xs text-gray-500">
+                    <span>或者在头部画面里直接点物体（浅绿右手能抓、浅蓝左手能抓，白线左边离左肩近用左手、右边用右手）</span>
+                    <button id="btn-target-clear" type="button" class="shrink-0 text-blue-600 hover:underline disabled:opacity-50">恢复默认</button>
+                  </div>
+                </div>
+{% endblock %}
+{% block head_view %}
+            <figure class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
+              <div class="relative aspect-[4/3] bg-gray-900 lg:aspect-auto lg:min-h-0 lg:flex-1">
+                <img id="depth_target-image" class="absolute inset-0 hidden h-full w-full cursor-crosshair object-contain" alt="头部 RGB（点选目标）" />
+                <p id="depth_target-empty" class="absolute inset-0 m-auto h-fit text-center text-xs text-gray-400">等待抓取后台</p>
+              </div>
+              <figcaption class="flex items-center justify-between gap-x-2 px-3 py-1.5 text-xs">
+                <span class="shrink-0 font-medium whitespace-nowrap text-gray-700">头部 RGB（点选目标）</span><span class="truncate text-gray-400">浅绿 右手 · 浅蓝 左手 · 白线 分手线 · 品红 目标 · 绿框 同名候选 · 红叉 点击处</span>
+              </figcaption>
+            </figure>
+{% endblock %}
+{% block flow_note %}选好目标后点「完整运行」：离哪个肩近用哪只手（白线是两肩的中线），那只够不着再换另一只，抓起、放回原处、回到起始位。抓取目前按竖直的瓶状物设计（圆柱拟合、侧抓中段），杯子、罐子可以，形状差别大的物体不保证。{% endblock %}
