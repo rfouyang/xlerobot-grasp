@@ -1,0 +1,20 @@
+# The upstream URDF gives the arm joints velocity="0", so the limits live here.
+# STS3215 runs ~4.7 rad/s unloaded; 2.0 rad/s keeps the motion easy to follow.
+default_velocity_scaling_factor: 0.5
+default_acceleration_scaling_factor: 0.5
+
+joint_limits:
+  Rotation: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Pitch: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Elbow: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Wrist_Pitch: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Wrist_Roll: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Jaw: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Rotation_2: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Pitch_2: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Elbow_2: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Wrist_Pitch_2: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Wrist_Roll_2: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  Jaw_2: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 4.0}
+  head_pan_joint: {has_velocity_limits: true, max_velocity: 1.57, has_acceleration_limits: true, max_acceleration: 3.0}
+  head_tilt_joint: {has_velocity_limits: true, max_velocity: 1.57, has_acceleration_limits: true, max_acceleration: 3.0}

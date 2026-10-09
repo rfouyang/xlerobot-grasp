@@ -1,0 +1,123 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="xlerobot_so101">
+  <link name="gripper_base" />
+  <joint name="gripper_base_joint" type="fixed">
+    <parent link="gripper_base" />
+    <child link="Fixed_Jaw" />
+    <origin xyz="0.020000 0.000000 0.000000" rpy="-1.570796 -0.000000 0.000000" />
+  </joint>
+  <link name="Fixed_Jaw">
+    <inertial>
+      <origin xyz="0.00552376906426563 -0.0280167153359021 0.000483582592841092" rpy="0 0 0" />
+      <mass value="0.0929859131176897" />
+      <inertia ixx="4.3328249304211E-05" ixy="7.09654328670947E-06" ixz="5.99838530879484E-07" iyy="3.04451747368212E-05" iyz="-1.58743247545413E-07" izz="5.02460913506734E-05" />
+    </inertial>
+    <visual name="fixed_jaw_chassis">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/Fixed_Jaw.stl" />
+      </geometry>
+      <material name="white">
+      </material>
+    </visual>
+    <visual name="fixed_jaw_motor">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/Fixed_Jaw_Motor.stl" />
+      </geometry>
+      <material name="motor">
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/Fixed_Jaw_part1.ply" />
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/Fixed_Jaw_part2.ply" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="Moving_Jaw">
+    <inertial>
+      <origin xyz="-0.00161744605468241 -0.0303472584046471 0.000449645961853651" rpy="0 0 0" />
+      <mass value="0.0202443794940372" />
+      <inertia ixx="1.10911325081525E-05" ixy="-5.35076503033314E-07" ixz="-9.46105662101403E-09" iyy="3.03576451001973E-06" iyz="-1.71146075110632E-07" izz="8.9916083370498E-06" />
+    </inertial>
+    <visual name="moving_jaw_chassis">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/Moving_Jaw.stl" />
+      </geometry>
+      <material name="white">
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/Moving_Jaw_part1.ply" />
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/Moving_Jaw_part2.ply" />
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/Moving_Jaw_part3.ply" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="Fixed_Jaw_tip">
+    
+  </link>
+  <link name="Moving_Jaw_tip">
+    
+  </link>
+  <link name="Right_Arm_Camera">
+    <visual name="Right_Arm_Camera_visual">
+      <origin xyz="-0.015 -0.026 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/XLeRobot_camera1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="white">
+      </material>
+    </visual>
+    <visual name="Right_Arm_Camera_visual_2">
+      <origin xyz="-0.015 -0.026 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/XLeRobot_camera2.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="motor">
+      </material>
+    </visual>
+  </link>
+  <joint name="Jaw" type="revolute">
+    <origin xyz="-0.0202 -0.0244 0" rpy="3.1416 0 3.33" />
+    <parent link="Fixed_Jaw" />
+    <child link="Moving_Jaw" />
+    <axis xyz="0 0 1" />
+    <limit lower="0" upper="1.7" effort="2.9" velocity="2.0" />
+  </joint>
+  <joint name="Fixed_Jaw_tip_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0.01 -0.097 0" />
+    <parent link="Fixed_Jaw" />
+    <child link="Fixed_Jaw_tip" />
+  </joint>
+  <joint name="Moving_Jaw_tip_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="-0.01 -0.073 0" />
+    <parent link="Moving_Jaw" />
+    <child link="Moving_Jaw_tip" />
+  </joint>
+  <joint name="Right_Arm_Camera_joint" type="fixed">
+    <origin rpy="1.5708 0 -1.5708" xyz="0 -0.02 0.05" />
+    <parent link="Fixed_Jaw" />
+    <child link="Right_Arm_Camera" />
+  </joint>
+</robot>

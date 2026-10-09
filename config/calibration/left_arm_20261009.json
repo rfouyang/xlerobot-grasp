@@ -1,0 +1,37 @@
+{
+ "arm": "left_arm",
+ "correction_deg": {
+  "shoulder_pan": 1.54,
+  "shoulder_lift": -4.49,
+  "elbow_flex": -4.49,
+  "wrist_flex": -7.92,
+  "wrist_roll": 0.0
+ },
+ "meaning": "true URDF angle = the shared mapping's URDF angle + correction (per URDF joint, named by its motor)",
+ "session": "output/calibration/left_board_20261009 (left_board_solve.py)",
+ "method": "15 left-arm poses with its wrist camera on the desk ChArUco board (12 usable): the board located by the head camera (PnP), the left wrist intrinsics (0.38 px), its hand-eye and the five joint offsets fitted on the corners' reprojection; leave-one-out within ~1 deg for pan / lift / elbow / wrist pitch; the roll (-4.6, unstable to 7.6 deg) is left at 0. It also explains the 11:17 run: the joints sent with the wrong -30.2 wrist correction put the real jaw 28 deg tip down.",
+ "date": "2026-10-09",
+ "superseded": {
+  "correction_deg": {
+   "shoulder_pan": 0.78,
+   "shoulder_lift": 2.52,
+   "elbow_flex": 4.06,
+   "wrist_flex": 0.93,
+   "wrist_roll": 0.0
+  },
+  "why": "fit on poses where the head saw the left jaw from behind (fixed jaw hidden by the wrist camera board); the first left grasp still found the fixed jaw 3.6 cm off (10:27), and it pushed the rest pose past the elbow limit"
+ },
+ "superseded_list": [
+  {
+   "correction_deg": {
+    "shoulder_pan": 0.0,
+    "shoulder_lift": 0.0,
+    "elbow_flex": 0.0,
+    "wrist_flex": -30.22,
+    "wrist_roll": 0.0
+   },
+   "why": "head-depth fits on the left arm are unreliable (its wrist camera board sits elsewhere than the URDF draws it and dominates the head's view); with wrist -30.2 the real fingertips pointed down to the desk while the model had them level 10 cm up (11:17)"
+  }
+ ],
+ "wrist_note": "the board fit's wrist pitch (-2.92) trades off against the wrist camera's mount angle; at a level pre-grasp the user saw the jaw tipped up ~5 deg (11:48), so 5 deg more (-7.92)"
+}

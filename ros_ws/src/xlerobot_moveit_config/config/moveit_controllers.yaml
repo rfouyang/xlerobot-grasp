@@ -1,0 +1,35 @@
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - right_arm_controller
+    - right_gripper_controller
+    - left_arm_controller
+    - left_gripper_controller
+    - head_controller
+
+  right_arm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [Rotation, Pitch, Elbow, Wrist_Pitch, Wrist_Roll]
+  right_gripper_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [Jaw]
+  left_arm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [Rotation_2, Pitch_2, Elbow_2, Wrist_Pitch_2, Wrist_Roll_2]
+  left_gripper_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [Jaw_2]
+  head_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [head_pan_joint, head_tilt_joint]

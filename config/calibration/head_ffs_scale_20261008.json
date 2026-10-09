@@ -1,0 +1,15 @@
+{
+ "head_ffs_depth_scale": 1.0072261403945872,
+ "p10_p90": [
+  1.004627128751452,
+  1.0092964503450952
+ ],
+ "corners": 1618,
+ "sensor_check": 1.0095931850594413,
+ "board_distance_m": [
+  0.4835885149021939,
+  0.5091434206283821
+ ],
+ "session": "output/calibration/ffs_scale_20261008_224112",
+ "method": "ChArUco corners by PnP in the head colour image vs FFS depth at the corner"
+}

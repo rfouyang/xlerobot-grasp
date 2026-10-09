@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.env
+output/
+ros_ws/build/
+ros_ws/install/
+ros_ws/log/
+model/
+data/
+log/
+robot_env/.venv/
+*.pyc

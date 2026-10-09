@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="xlerobot">
+  <xacro:arg name="initial_positions_file" default="$(find xlerobot_moveit_config)/config/initial_positions.yaml" />
+
+  <xacro:include filename="$(find xlerobot_description)/urdf/xlerobot.urdf" />
+  <xacro:include filename="$(find xlerobot_moveit_config)/config/xlerobot.ros2_control.xacro" />
+
+  <xacro:xlerobot_ros2_control name="MockSystem" initial_positions_file="$(arg initial_positions_file)" />
+</robot>

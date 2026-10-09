@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>XLeRobot 抓取</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/preline@5.0.0/dist/preline.js" defer></script>
+    <script src="/static/ui_grasp/grasp_ui.js" defer></script>
+    <script src="/static/ui_grasp/real_ui.js" defer></script>
+  </head>
+  <body class="h-full bg-gray-50 text-sm text-gray-800" data-viewer-port="{{ viewer_port }}">
+    {% set button_shape = "inline-flex items-center justify-center gap-x-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-medium shadow-2xs disabled:pointer-events-none disabled:opacity-40" %}
+    {% set button = button_shape ~ " border-gray-200 bg-white text-gray-800 hover:bg-gray-50" %}
+    {% set heading = "mb-2 text-xs font-semibold tracking-wide text-gray-500" %}
+    {% set tab_button = "hs-tab-active:border-blue-600 hs-tab-active:text-blue-600 inline-flex items-center gap-x-2 border-b-2 border-transparent px-1 py-3 text-sm whitespace-nowrap text-gray-500 hover:text-blue-600" %}
+    <div class="flex h-full flex-col">
+      <header class="flex items-center gap-x-3 border-b border-gray-200 bg-white px-4 py-2">
+        <span class="font-semibold text-gray-900">XLeRobot 抓取</span>
+        <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">GraspGenX · cuRobo v2 · MoveIt 2</span>
+        <span id="link-badge" class="ms-auto inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">未连接</span>
+      </header>
+
+      <div class="flex min-h-0 flex-1">
+        <aside class="flex w-96 shrink-0 flex-col border-e border-gray-200 bg-white">
+          <nav class="flex gap-x-4 border-b border-gray-200 px-4" aria-label="Tabs" role="tablist" aria-orientation="horizontal">
+            <button type="button" class="{{ tab_button }} active" id="tab-robot-item" aria-selected="true" data-hs-tab="#tab-robot" aria-controls="tab-robot" role="tab">机器人</button>
+            <button type="button" class="{{ tab_button }}" id="tab-grasp-item" aria-selected="false" data-hs-tab="#tab-grasp" aria-controls="tab-grasp" role="tab">抓取生成</button>
+            <button type="button" class="{{ tab_button }}" id="tab-execute-item" aria-selected="false" data-hs-tab="#tab-execute" aria-controls="tab-execute" role="tab">抓取执行</button>
+            <button type="button" class="{{ tab_button }}" id="tab-real-item" aria-selected="false" data-hs-tab="#tab-real" aria-controls="tab-real" role="tab">真机抓取</button>
+          </nav>
+
+          <div class="min-h-0 flex-1 overflow-y-auto p-4">
+            <div id="tab-robot" role="tabpanel" aria-labelledby="tab-robot-item" class="space-y-5">
+              <section>
+                <h2 class="{{ heading }}">手臂</h2>
+                <div id="arm-switch" class="grid grid-cols-2 gap-2"></div>
+              </section>
+              <section>
+                <h2 class="{{ heading }}">手臂位姿（MoveIt 规划并执行）</h2>
+                <div id="arm-poses" class="grid grid-cols-3 gap-2"></div>
+              </section>
+              <section>
+                <h2 class="{{ heading }}">夹爪</h2>
+                <div id="gripper-poses" class="grid grid-cols-3 gap-2"></div>
+              </section>
+              <p id="move-status" class="min-h-5 text-xs text-gray-500"></p>
+              <section>
+                <h2 class="{{ heading }}">关节（实时）</h2>
+                <table class="min-w-full text-xs">
+                  <thead><tr class="text-gray-400"><th class="py-1 text-start font-normal">关节</th><th class="py-1 text-end font-normal">角度 (°)</th></tr></thead>
+                  <tbody id="joint-table" class="divide-y divide-gray-100 font-mono"></tbody>
+                </table>
+              </section>
+            </div>
+
+            <div id="tab-grasp" role="tabpanel" aria-labelledby="tab-grasp-item" class="hidden space-y-5">
+              <section>
+                <h2 class="{{ heading }}">饮料（竖放在右臂前方的桌上，抓瓶身中段）</h2>
+                <div id="object-list" class="grid grid-cols-2 gap-2"></div>
+              </section>
+              <section>
+                <button id="btn-generate" type="button" class="{{ button_shape }} w-full border-blue-600 bg-blue-600 text-white hover:bg-blue-700">用 GraspGenX 生成抓取</button>
+                <p id="grasp-status" class="mt-2 min-h-5 text-xs text-gray-500"></p>
+              </section>
+              <section>
+                <h2 class="{{ heading }}">抓取候选（点选在 3D 里显示夹爪）</h2>
+                <div id="grasp-list" class="max-h-96 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 font-mono text-xs"></div>
+              </section>
+            </div>
+
+            <div id="tab-execute" role="tabpanel" aria-labelledby="tab-execute-item" class="hidden space-y-5">
+              <section>
+                <p class="mb-3 text-xs text-gray-500">对「抓取生成」里最近一次的饮料：留下从侧面抓瓶身中段的抓取，转到正对右肩、放平、瓶身放进夹爪兜里；cuRobo 筛出右臂够得到的，越靠中间越先规划 接近 → 抓取 → 抬起，经 MoveIt 执行。</p>
+                <button id="btn-execute" type="button" class="{{ button_shape }} w-full border-blue-600 bg-blue-600 text-white hover:bg-blue-700">规划并执行抓取</button>
+              </section>
+              <section>
+                <h2 class="{{ heading }}">进度</h2>
+                <ol id="execute-progress" class="space-y-1 rounded-lg border border-gray-200 p-3 font-mono text-xs"></ol>
+              </section>
+              <section id="execute-result" class="hidden">
+                <h2 class="{{ heading }}">结果（MuJoCo 物理仿真录像）</h2>
+                <span id="execute-badge" class="mb-2 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"></span>
+                <video id="execute-video" class="w-full rounded-lg border border-gray-200" controls muted playsinline></video>
+              </section>
+            </div>
+
+            <div id="tab-real" role="tabpanel" aria-labelledby="tab-real-item" class="hidden space-y-5">
+              <section class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+                真机只经遥操作服务控制（<a id="teleop-link" class="font-medium text-blue-600 underline" target="_blank">遥操作页</a>）：那里的 Esc / 停止随时有效，停止后这一步失败、真机停在原地。
+                一步一个按钮，只能按顺序点下一步；运动按规划时长的 2 倍慢放。
+              </section>
+              <section class="flex gap-2">
+                <button id="btn-real-stop" type="button" class="{{ button_shape }} flex-1 border-red-600 bg-red-600 text-white hover:bg-red-700">停止（真机）</button>
+                <button id="btn-real-reset" type="button" class="{{ button }}">重置流程</button>
+              </section>
+              <section>
+                <h2 class="{{ heading }}">步骤</h2>
+                <ol id="real-stages" class="space-y-1.5"></ol>
+              </section>
+              <section id="real-plan" class="hidden">
+                <h2 class="{{ heading }}">规划（投影到头部画面：夹爪在抓取位，蓝 = 接近，绿 = 伸进，橙 = 抬起）</h2>
+                <img id="real-plan-image" class="w-full rounded-lg border border-gray-200" alt="真机抓取规划" />
+              </section>
+              <section id="real-align" class="hidden">
+                <h2 class="{{ heading }}">腕部相机对准（红 = 定指内侧面，绿 = 瓶子左边缘该在的位置，黄 = 现在的位置）</h2>
+                <img id="real-align-image" class="mx-auto max-h-96 rounded-lg border border-gray-200" alt="腕部相机对准" />
+              </section>
+              <section>
+                <h2 class="{{ heading }}">进度</h2>
+                <ol id="real-progress" class="max-h-72 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-3 font-mono text-xs"></ol>
+              </section>
+            </div>
+          </div>
+        </aside>
+
+        <main class="relative min-w-0 flex-1">
+          <iframe id="viewer" class="absolute inset-0 h-full w-full border-0" title="3D 视图"></iframe>
+        </main>
+      </div>
+    </div>
+
+    <template id="button-template">
+      <button type="button" class="{{ button }} data-[active=true]:border-blue-600 data-[active=true]:bg-blue-600 data-[active=true]:text-white"></button>
+    </template>
+  </body>
+</html>

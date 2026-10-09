@@ -1,0 +1,111 @@
+<?xml version="1.0" ?>
+<robot name="xlerobot">
+  <group name="right_arm">
+    <chain base_link="base_link" tip_link="Fixed_Jaw" />
+  </group>
+  <group name="right_gripper">
+    <joint name="Jaw" />
+  </group>
+  <!-- The right arm and its jaw in one trajectory (both controllers at once): the real grasp opens the jaw while the
+       arm moves the jaw off the bottle. -->
+  <group name="right_arm_jaw">
+    <group name="right_arm" />
+    <group name="right_gripper" />
+  </group>
+  <group name="left_arm">
+    <chain base_link="base_link" tip_link="Fixed_Jaw_2" />
+  </group>
+  <group name="left_gripper">
+    <joint name="Jaw_2" />
+  </group>
+  <!-- The left arm and its jaw in one trajectory (the release opens the jaw while the shoulder turns). -->
+  <group name="left_arm_jaw">
+    <group name="left_arm" />
+    <group name="left_gripper" />
+  </group>
+  <group name="head">
+    <joint name="head_pan_joint" />
+    <joint name="head_tilt_joint" />
+  </group>
+
+  <!-- Arm poses: "zero" reaches straight forward. The right arm's "ready" pulls the jaw back over the cart,
+       level and pointing forward, fingertip centre at (0.14, -0.133, 0.92): clear of a drink standing at x=0.27
+       (top ~0.97) and set for a side grasp (cuRobo IK). The left arm keeps the older "ready" over the table. -->
+  <group_state name="zero" group="right_arm">
+    <joint name="Rotation" value="0" />
+    <joint name="Pitch" value="0" />
+    <joint name="Elbow" value="0" />
+    <joint name="Wrist_Pitch" value="0" />
+    <joint name="Wrist_Roll" value="0" />
+  </group_state>
+  <group_state name="ready" group="right_arm">
+    <joint name="Rotation" value="-0.084" />
+    <joint name="Pitch" value="1.43" />
+    <joint name="Elbow" value="0.985" />
+    <joint name="Wrist_Pitch" value="1.741" />
+    <joint name="Wrist_Roll" value="1.66" />
+  </group_state>
+  <group_state name="zero" group="left_arm">
+    <joint name="Rotation_2" value="0" />
+    <joint name="Pitch_2" value="0" />
+    <joint name="Elbow_2" value="0" />
+    <joint name="Wrist_Pitch_2" value="0" />
+    <joint name="Wrist_Roll_2" value="0" />
+  </group_state>
+  <group_state name="ready" group="left_arm">
+    <joint name="Rotation_2" value="0" />
+    <joint name="Pitch_2" value="0.3" />
+    <joint name="Elbow_2" value="0.3" />
+    <joint name="Wrist_Pitch_2" value="0.4" />
+    <joint name="Wrist_Roll_2" value="0" />
+  </group_state>
+  <group_state name="open" group="right_gripper">
+    <joint name="Jaw" value="1.3" />
+  </group_state>
+  <group_state name="close" group="right_gripper">
+    <joint name="Jaw" value="0" />
+  </group_state>
+  <group_state name="open" group="left_gripper">
+    <joint name="Jaw_2" value="1.3" />
+  </group_state>
+  <group_state name="close" group="left_gripper">
+    <joint name="Jaw_2" value="0" />
+  </group_state>
+
+  <end_effector name="right_hand" parent_link="Fixed_Jaw" group="right_gripper" parent_group="right_arm" />
+  <end_effector name="left_hand" parent_link="Fixed_Jaw_2" group="left_gripper" parent_group="left_arm" />
+
+  <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="root" />
+
+  <!-- Adjacent / never-colliding pairs. The upstream SRDF lists the arm chains; the rest
+       (base, head, motors, cameras) are filled in by sampling, see the end of this file. -->
+  <disable_collisions link1="Base" link2="Rotation_Pitch" reason="Adjacent" />
+  <disable_collisions link1="Rotation_Pitch" link2="Upper_Arm" reason="Adjacent" />
+  <disable_collisions link1="Upper_Arm" link2="Lower_Arm" reason="Adjacent" />
+  <disable_collisions link1="Lower_Arm" link2="Wrist_Pitch_Roll" reason="Adjacent" />
+  <disable_collisions link1="Wrist_Pitch_Roll" link2="Fixed_Jaw" reason="Adjacent" />
+  <disable_collisions link1="Wrist_Pitch_Roll" link2="Moving_Jaw" reason="Default" />
+  <disable_collisions link1="Moving_Jaw" link2="Fixed_Jaw" reason="Adjacent" />
+  <disable_collisions link1="Rotation_Pitch" link2="Lower_Arm" reason="Default" />
+  <disable_collisions link1="Rotation_Pitch" link2="Wrist_Pitch_Roll" reason="Default" />
+  <disable_collisions link1="Upper_Arm" link2="Wrist_Pitch_Roll" reason="Default" />
+  <disable_collisions link1="Upper_Arm" link2="Base" reason="Default" />
+  <disable_collisions link1="Base_2" link2="Rotation_Pitch_2" reason="Adjacent" />
+  <disable_collisions link1="Rotation_Pitch_2" link2="Upper_Arm_2" reason="Adjacent" />
+  <disable_collisions link1="Upper_Arm_2" link2="Lower_Arm_2" reason="Adjacent" />
+  <disable_collisions link1="Lower_Arm_2" link2="Wrist_Pitch_Roll_2" reason="Adjacent" />
+  <disable_collisions link1="Wrist_Pitch_Roll_2" link2="Fixed_Jaw_2" reason="Adjacent" />
+  <disable_collisions link1="Wrist_Pitch_Roll_2" link2="Moving_Jaw_2" reason="Default" />
+  <disable_collisions link1="Moving_Jaw_2" link2="Fixed_Jaw_2" reason="Adjacent" />
+  <disable_collisions link1="Rotation_Pitch_2" link2="Lower_Arm_2" reason="Default" />
+  <disable_collisions link1="Rotation_Pitch_2" link2="Wrist_Pitch_Roll_2" reason="Default" />
+  <disable_collisions link1="Upper_Arm_2" link2="Wrist_Pitch_Roll_2" reason="Default" />
+  <disable_collisions link1="Upper_Arm_2" link2="Base_2" reason="Default" />
+  <disable_collisions link1="Base" link2="base_link" reason="Adjacent" />
+  <disable_collisions link1="Base_2" link2="base_link" reason="Adjacent" />
+  <disable_collisions link1="Base" link2="Base_2" reason="Default" />
+  <disable_collisions link1="top_base_link" link2="base_link" reason="Adjacent" />
+  <disable_collisions link1="head_pan_link" link2="top_base_link" reason="Adjacent" />
+  <disable_collisions link1="head_tilt_link" link2="head_pan_link" reason="Adjacent" />
+  <disable_collisions link1="head_camera_link" link2="head_tilt_link" reason="Adjacent" />
+</robot>
