@@ -38,7 +38,8 @@ from app.api.grasp_generation_api import create_grasp_generation_api
 from app.api.real_grasp_api import create_real_grasp_api
 from app.api.robot_operation_api import create_robot_operation_api
 from app.api.robot_proxy_api import create_robot_proxy_api
-from app.supervisor import Supervisor
+from app.api.system_api import create_system_api
+from component.system_check.supervisor import Supervisor
 from app.ui.routes import create_ui, mount_ui_static
 from config.settings import PathConfig, ServerConfig, use_utf8_output
 from util.log_helper import setup_logger
@@ -47,10 +48,11 @@ from util.log_helper import setup_logger
 GRASP_PREFIX = "/grasp-api"
 
 
-def create_app() -> FastAPI:
+def create_app(supervisor: Supervisor) -> FastAPI:
     app = FastAPI(title="XLeRobot")
     app.include_router(create_ui())
     app.include_router(create_robot_proxy_api())
+    app.include_router(create_system_api(supervisor))
     for router in (create_robot_operation_api(), create_grasp_generation_api(), create_grasp_execution_api(), create_real_grasp_api()):
         app.include_router(router, prefix=GRASP_PREFIX)
     mount_ui_static(app)
@@ -77,7 +79,7 @@ def main() -> None:
     try:
         # log_config=None: uvicorn's records go through the loguru intercept. The camera streams never end on their
         # own, so a graceful shutdown would wait for every open page to go away.
-        uvicorn.run(create_app(), host=ServerConfig.HOST, port=ServerConfig.PORT, log_config=None, timeout_graceful_shutdown=2)
+        uvicorn.run(create_app(supervisor), host=ServerConfig.HOST, port=ServerConfig.PORT, log_config=None, timeout_graceful_shutdown=2)
     finally:
         supervisor.stop()
         logger.info("页面和抓取已停止；机器人进程和 ROS bringup 继续运行（python app/main.py --stop-all 才会停）")

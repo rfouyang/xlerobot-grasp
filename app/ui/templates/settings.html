@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{# 系统设置 (design: 07): the self-check (services, cameras, joints, planning, USB devices), read-only, and the restart. #}
+{% block title %}系统设置{% endblock %}
+{% block subtitle %}确认服务、相机与关节可用，再进入遥操作或抓取。自检只读：不开力矩、不动机器人。{% endblock %}
+{% block scripts %}<script src="/static/ui/settings.js?v={{ asset_version('settings.js') }}" defer></script>{% endblock %}
+{% block content %}
+        <div id="summary" class="rounded-xl border border-gray-200 bg-white p-4 shadow-2xs">
+          <p id="summary-title" class="text-base font-semibold text-gray-800">正在自检…</p>
+          <p id="summary-text" class="mt-1 text-sm text-gray-500"></p>
+        </div>
+
+        <div id="stages" class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"></div>
+
+        <section class="{{ card }}">
+          <div class="{{ card_head }}">
+            <h2 class="{{ card_title }}">自检与恢复</h2>
+            <span id="check-time" class="text-xs text-gray-500"></span>
+          </div>
+          <div class="space-y-3 p-4 text-sm text-gray-600">
+            <p>检查服务 → 相机图像 → 关节读数 → 规划依赖 → USB 设备。机器人进程挂了，app/main.py 会在约 15 s 内自动重启它（重启后接管还有力矩的部件，手臂不会掉）。</p>
+            <div class="flex flex-wrap gap-2">
+              <button id="btn-check" type="button" class="{{ primary }}">运行完整自检</button>
+              <button id="btn-restart-robot" type="button" class="{{ button }}">重启机器人进程</button>
+              <label class="flex items-center gap-2 text-sm text-gray-700"><input id="auto-check" type="checkbox" class="size-4 rounded border-gray-300 text-blue-600" /> 每 10 s 自动自检</label>
+            </div>
+          </div>
+        </section>
+{% endblock %}

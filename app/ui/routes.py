@@ -89,11 +89,8 @@ def create_ui() -> APIRouter:
 
     @router.get("/settings")
     def settings(request: Request):
-        page = templates.TemplateResponse(request, "placeholder.html", {
-            "page": "settings", "title": "系统设置", "subtitle": "确认服务、相机与关节可用，再进入遥操作或抓取。",
-            "items": ["自检：服务 → 相机图像 → 关节读数 → 规划依赖 → 汇总（不开力矩）",
-                      "设备自动匹配：按序列号和物理端口给相机、总线分配角色，预览确认后保存",
-                      "重启服务、重新连接异常设备（经 app/supervisor.py）"]})
+        """The self-check (read-only) and the robot process restart."""
+        page = templates.TemplateResponse(request, "settings.html", {"page": "settings"})
         return page
 
     @router.get("/ui-api/info")

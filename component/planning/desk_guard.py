@@ -80,6 +80,18 @@ class DeskGuard:
         clearance, link = self.clearance(arm, cfg)
         return clearance >= arm.desk_margin_m, clearance, link
 
+    def check_segments(self, arm: Arm, segments: dict, fixed: dict[str, float], jaw_positions: tuple[float, ...]) -> tuple[bool, dict]:
+        """Use the execution guard before accepting a plan, including open/closed jaw geometry.
+        Execution still rechecks after wrist alignment and real joint drift.
+        """
+        for name, segment in segments.items():
+            for jaw in jaw_positions:
+                clear, lowest, row, link = self.check_rows(arm, segment.positions, {**fixed, arm.jaw: jaw})
+                if not clear:
+                    return False, {"segment": name, "clearance_m": lowest, "row": row, "link": link,
+                                   "required_m": arm.desk_margin_m, "jaw_rad": jaw}
+        return True, {}
+
     def check_rows(self, arm: Arm, rows: np.ndarray, fixed: dict[str, float]) -> tuple[bool, float, int, str]:
         """rows (T, 5): the arm's URDF joints along a trajectory, densified to steps of at most STEP_RAD; fixed: every
         other joint. ok when every row keeps the margin; also the lowest clearance, its row and link."""

@@ -213,6 +213,14 @@ class RealGraspPlanning:
         for grasp in ordered[: RealPlanningConfig.MAX_PLAN_TRIES]:
             segments = self.planner.plan_grasp(start, grasp.tool_pose, MotionConfig.APPROACH_DISTANCE, MotionConfig.LIFT_HEIGHT)
             if segments is not None and all(self.roll_ok(segment.positions) for segment in segments.values()):
+                clear, rejection = self.guard.check_segments(arm, segments, real_scene.urdf_joints,
+                                                             (GripperConfig.JAW_CLOSE, GripperConfig.JAW_OPEN))
+                if not clear:
+                    self.preferences.report.setdefault("desk_rejections", []).append({"candidate": grasp.index, **rejection})
+                    logger.info("跳过抓取 #{}：{} / {} 离桌面 {:.1f} cm，小于 {:.1f} cm", grasp.index,
+                                rejection["segment"], rejection["link"], rejection["clearance_m"] * 100,
+                                rejection["required_m"] * 100)
+                    continue
                 self.preferences.report["selected"] = {"candidate": grasp.index, "score": float(grasp.score)}
                 if self.preferences.report.get("ranked"):
                     self.preferences.report["selected"].update(next((r for r in self.preferences.report["ranked"] if r.get("candidate") == grasp.index), {}))
