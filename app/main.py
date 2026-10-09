@@ -65,6 +65,26 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     return app
 
 
+def serve(app: FastAPI) -> None:
+    """The app on HTTP (ServerConfig.PORT) and HTTPS (HTTPS_PORT, a self-signed certificate: the iPad's microphone).
+    log_config=None: uvicorn's records go through the loguru intercept. The camera streams never end on their own, so
+    a graceful shutdown would wait for every open page to go away."""
+    import asyncio
+
+    from util.tls_helper import ensure_certificate
+
+    certificate, key = ensure_certificate()
+    common = {"host": ServerConfig.HOST, "log_config": None, "timeout_graceful_shutdown": 2}
+    servers = [uvicorn.Server(uvicorn.Config(app, port=ServerConfig.PORT, **common)),
+               uvicorn.Server(uvicorn.Config(app, port=ServerConfig.HTTPS_PORT, ssl_certfile=str(certificate), ssl_keyfile=str(key), **common))]
+    logger.info("HTTPS：https://<本机地址>:{}（自签名证书，第一次打开要选「继续访问」）", ServerConfig.HTTPS_PORT)
+
+    async def both() -> None:
+        await asyncio.gather(*(server.serve() for server in servers))
+
+    asyncio.run(both())
+
+
 @logger.catch(reraise=True)
 def main() -> None:
     use_utf8_output()
@@ -83,9 +103,7 @@ def main() -> None:
     grasp_context.start()
     logger.info("XLeRobot：http://localhost:{}（机器人进程 8011，3D 视图端口 {}）", ServerConfig.PORT, grasp_context.viewer_port)
     try:
-        # log_config=None: uvicorn's records go through the loguru intercept. The camera streams never end on their
-        # own, so a graceful shutdown would wait for every open page to go away.
-        uvicorn.run(create_app(supervisor), host=ServerConfig.HOST, port=ServerConfig.PORT, log_config=None, timeout_graceful_shutdown=2)
+        serve(create_app(supervisor))
     finally:
         supervisor.stop()
         logger.info("页面和抓取已停止；机器人进程和 ROS bringup 继续运行（python app/main.py --stop-all 才会停）")

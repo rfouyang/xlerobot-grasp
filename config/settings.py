@@ -67,6 +67,10 @@ class ServerConfig:
 
     HOST = "0.0.0.0"
     PORT = 8010
+    # The same app over HTTPS: browsers give the microphone only to https pages (and localhost), so the iPad uses
+    # https://<this PC>:8443 with the self-signed certificate made at start (util/tls_helper.py; accept it once).
+    HTTPS_PORT = 8443
+    TLS_DIR = BASE_DIR / "config" / "tls"
     LOG_LEVEL = "INFO"
     # How often the page's joint table is pushed over the WebSocket.
     STATE_PUSH_INTERVAL_S = 0.1

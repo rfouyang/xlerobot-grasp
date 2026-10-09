@@ -10,3 +10,4 @@ data/
 log/
 robot_env/.venv/
 *.pyc
+config/tls/
