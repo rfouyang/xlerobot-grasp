@@ -41,12 +41,25 @@
               </table>
             </div>
           </section>
-          <section class="{{ card }} px-4 py-3">
-            <div class="flex flex-wrap items-center gap-2">
-              <button type="button" class="{{ button }}" disabled>采集当前有效帧</button>
-              <button type="button" class="{{ primary }}" disabled>计算标定</button>
-              <button type="button" class="{{ button }}" disabled>验证结果并保存版本</button>
-              <span class="text-xs text-gray-500">采样、计算和验证下一步接进页面；现在仍用 output/scratch_20261006 里的标定脚本（left_board_*.py、board_in_base.py、ffs_scale_calib.py）。</span>
+          <section class="{{ card }}">
+            <div class="{{ card_head }}">
+              <h2 class="{{ card_title }}">腕部手眼标定</h2>
+              <span id="session-name" class="font-mono text-xs text-gray-500">没有会话</span>
+            </div>
+            <div class="space-y-3 p-4 text-sm text-gray-700">
+              <p>标定板平放在桌上不要动。用键盘控制（或关力矩用手）把手臂摆到不同角度，让<strong>腕部相机</strong>看到板子、<strong>头部相机</strong>也看到板子，每摆一个姿态采一帧；至少 6 个有效帧，最好 12 个以上（斜着看、远近都要有）。采集不动机器人。</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <select id="session-arm" class="rounded-lg border border-gray-200 px-3 py-2 text-sm"><option value="left">左腕</option><option value="right">右腕</option></select>
+                <button id="btn-session" type="button" class="{{ button }}">开始新的标定会话</button>
+                <button id="btn-capture" type="button" class="{{ primary }}" disabled>采集当前有效帧</button>
+                <button id="btn-solve" type="button" class="{{ button }}" disabled>计算标定</button>
+                <button id="btn-save" type="button" class="{{ button }}" disabled>保存为新版本</button>
+                <span id="session-note" class="text-xs text-gray-500"></span>
+              </div>
+              <div class="overflow-x-auto"><table class="min-w-full text-xs"><thead><tr class="text-gray-500">
+                <th class="py-1 pe-4 text-start">帧</th><th class="py-1 pe-4 text-start">腕部角点</th><th class="py-1 pe-4 text-start">头部角点</th><th class="py-1 text-start">手臂关节（°）</th>
+              </tr></thead><tbody id="session-poses" class="divide-y divide-gray-100 font-mono"></tbody></table></div>
+              <div id="session-result" class="hidden rounded-lg bg-blue-50 p-3 text-xs text-blue-900"></div>
             </div>
           </section>
         </div>

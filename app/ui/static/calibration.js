@@ -98,7 +98,55 @@ function exportCompare() {
   link.click();
 }
 
+// --- the wrist hand-eye session ---
+
+async function sessionCall(path, body) {
+  const result = await (body === undefined ? fetch(`/api/calibration/${path}`).then((r) => r.json()) : post(`/api/calibration/${path}`, body));
+  if (result.ok === false) notify(result.error);
+  if (result.poses) renderSession(result);
+  return result;
+}
+
+function renderSession(state) {
+  document.getElementById("session-name").textContent = state.session || "没有会话";
+  if (state.session) document.getElementById("session-arm").value = state.arm;
+  document.getElementById("btn-capture").disabled = !state.session || state.solving;
+  document.getElementById("btn-solve").disabled = state.usable < 6 || state.solving;
+  document.getElementById("btn-save").disabled = !state.result || state.solving;
+  document.getElementById("session-note").textContent = state.solving ? "正在计算（约 1–2 分钟）……" : state.session ? `有效帧 ${state.usable} / ${state.poses.length}` : "";
+  document.getElementById("session-poses").innerHTML = state.poses.map((pose) => `
+    <tr class="${pose.usable ? "" : "text-gray-400"}"><td class="py-1 pe-4">${pose.i}</td><td class="py-1 pe-4">${pose.wrist_corners}${pose.usable ? "" : "（太少）"}</td>
+      <td class="py-1 pe-4">${pose.head_corners}</td><td class="py-1">${Object.entries(pose.arm).map(([k, v]) => `${k} ${v}`).join("，")}</td></tr>`).join("");
+  const box = document.getElementById("session-result");
+  const result = state.result;
+  box.classList.toggle("hidden", !result && !state.error);
+  if (state.error) box.innerHTML = `<p class="font-semibold text-red-700">计算失败：${escapeHtml(state.error)}</p>`;
+  else if (result) {
+    const motors = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll"];
+    box.innerHTML = `<p class="font-semibold">结果（${result.views.length} 个视角）</p>
+      <p>腕部内参 RMS ${result.rms_px.toFixed(3)} px · 板子散布 ${result.board_spread_mm} mm · 重投影中位：起始 ${result.reprojection_px.start} → 拟合 ${result.reprojection_px.fitted} → 留一 ${result.reprojection_px.held_out} px</p>
+      <p>关节偏置（°，加在当前修正上）：${motors.map((m, i) => `${m} ${result.joint_offset_deg[i] >= 0 ? "+" : ""}${result.joint_offset_deg[i]}（留一 ±${result.loo_max_deg[i]}）`).join("，")}</p>
+      <p>新的关节修正（°；wrist_roll 不改，板子定不准它）：${motors.map((m) => `${m} ${result.correction_deg[m]}`).join("，")}</p>
+      <p>腕部相机镜头在定指上：[${result.lens_mm.join(", ")}] mm</p>
+      ${state.saved ? `<p class="mt-1 font-semibold text-emerald-700">已保存为 config/calibration/${escapeHtml(state.saved)}（草稿，没有启用：确认后再换掉机器人正在用的修正）</p>` : ""}`;
+  }
+}
+
+async function pollSession() {
+  const state = await sessionCall("session");
+  setTimeout(pollSession, state && state.solving ? 2000 : 5000);
+}
+
 App.ready.then(() => {
+  document.getElementById("btn-session").addEventListener("click", () => sessionCall("session", { arm: document.getElementById("session-arm").value }));
+  document.getElementById("btn-capture").addEventListener("click", async (event) => {
+    event.target.disabled = true;
+    const result = await sessionCall("capture", {});
+    if (result.pose) notify(result.pose.usable ? `第 ${result.pose.i} 帧：腕部 ${result.pose.wrist_corners} 个角点，头部 ${result.pose.head_corners} 个` : `第 ${result.pose.i} 帧腕部只看到 ${result.pose.wrist_corners} 个角点，不计入；换个角度再采`);
+  });
+  document.getElementById("btn-solve").addEventListener("click", () => sessionCall("solve", {}));
+  document.getElementById("btn-save").addEventListener("click", async () => { const result = await sessionCall("save", {}); if (result.ok) loadResults(); });
+  pollSession();
   document.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.tab)));
   document.getElementById("btn-freeze").addEventListener("click", (event) => {
     calib.frozen = !calib.frozen;

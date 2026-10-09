@@ -21,14 +21,19 @@ ARMS = {"right_arm": "", "left_arm": "_2"}
 
 
 class JointMappingHelper:
-    """real = sign * urdf_deg + offset, per joint; the grippers map 0-100 onto Jaw 0..JAW_OPEN_RAD."""
+    """real = sign * urdf_deg + offset, per joint; the grippers map 0-100 onto Jaw 0..JAW_OPEN_RAD. corrections: each arm's
+    calibrated joint corrections (JointMappingConfig.ARM_CORRECTION_DEG; {} for the bare mapping, as a re-calibration
+    from scratch wants)."""
+
+    def __init__(self, **kwargs) -> None:
+        self.corrections = kwargs.get("corrections", JointMappingConfig.ARM_CORRECTION_DEG)
 
     def to_urdf(self, real: dict[str, dict[str, float]]) -> dict[str, float]:
         """real: part -> motor -> value (the teleop service's joints) -> URDF joint -> radians."""
         urdf = {}
         for part, suffix in ARMS.items():
             if part in real:
-                correction = JointMappingConfig.ARM_CORRECTION_DEG.get(part, {})
+                correction = self.corrections.get(part, {})
                 for joint, (motor, sign, offset) in JointMappingConfig.ARM.items():
                     urdf[joint + suffix] = math.radians((real[part][motor] - offset) / sign + correction.get(motor, 0.0))
                 urdf["Jaw" + suffix] = real[part]["gripper"] / 100 * JointMappingConfig.JAW_OPEN_RAD
@@ -41,7 +46,7 @@ class JointMappingHelper:
         """URDF joint -> radians -> part -> motor -> value, for the joints given."""
         real: dict[str, dict[str, float]] = {}
         for part, suffix in ARMS.items():
-            correction = JointMappingConfig.ARM_CORRECTION_DEG.get(part, {})
+            correction = self.corrections.get(part, {})
             for joint, (motor, sign, offset) in JointMappingConfig.ARM.items():
                 if joint + suffix in urdf:
                     real.setdefault(part, {})[motor] = sign * (math.degrees(urdf[joint + suffix]) - correction.get(motor, 0.0)) + offset

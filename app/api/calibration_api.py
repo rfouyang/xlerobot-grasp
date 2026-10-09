@@ -17,6 +17,8 @@ import cv2
 from fastapi import APIRouter, HTTPException, Response
 from loguru import logger
 
+from pydantic import BaseModel
+
 from component.calibration.versions import calibrations
 from config.charuco import CharucoConfig
 from config.settings import use_utf8_output
@@ -52,9 +54,48 @@ class LiveDetection:
             return data, view.count, view.error_px
 
 
+class SessionRequest(BaseModel):
+    arm: Literal["left", "right"]
+
+
 def create_calibration_api() -> APIRouter:
     router = APIRouter()
     live = LiveDetection()
+    sessions: dict = {}
+
+    def session():
+        if "current" not in sessions:
+            from component.calibration.capture import CalibrationSession
+
+            sessions["current"] = CalibrationSession()
+        return sessions["current"]
+
+    @router.get("/api/calibration/session")
+    def session_status():
+        response = session().status()
+        return response
+
+    @router.post("/api/calibration/session")
+    def session_start(request: SessionRequest):
+        response = session().start(request.arm)
+        return response
+
+    @router.post("/api/calibration/capture")
+    def capture():
+        """The current wrist view, head RGB-D and joints into the session (nothing moves). Plain def: a worker thread."""
+        response = session().capture()
+        return response
+
+    @router.post("/api/calibration/solve")
+    def solve():
+        """Starts the solve in the background; the page polls the session."""
+        response = session().solve()
+        return response
+
+    @router.post("/api/calibration/save")
+    def save():
+        response = session().save()
+        return response
 
     @router.get("/api/calibration/results")
     def results():
