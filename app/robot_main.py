@@ -1,4 +1,4 @@
-"""服务入口：电机与相机后台的 FastAPI（API、WebSocket、相机画面）；页面在 xlerobot-ui。"""
+"""机器人进程的入口（8011）：电机与相机的 FastAPI（API、WebSocket、相机画面）。由 app/main.py 拉起；页面在 app/ui，经 8010 转发过来。"""
 
 from __future__ import annotations
 

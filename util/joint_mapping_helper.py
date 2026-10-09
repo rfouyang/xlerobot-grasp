@@ -58,7 +58,7 @@ def demo_joint_mapping_helper() -> None:
     import json
 
     helper = JointMappingHelper()
-    teleop_config = Path.home() / "workspace" / "services" / "xlerobot-teleop" / "config"
+    teleop_config = BASE_DIR / "config"
     for name in ("rest", "grasp_start"):
         real = json.loads((teleop_config / f"{name}_pose.json").read_text())["pose"]
         urdf = helper.to_urdf(real)

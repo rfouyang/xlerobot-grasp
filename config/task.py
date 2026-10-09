@@ -5,7 +5,7 @@ from __future__ import annotations
 
 
 class RealRobotConfig:
-    """The real XLeRobot is reached only through the xlerobot-teleop service: it owns the serial ports and the
+    """The real XLeRobot is reached only through the robot process (app/robot_main.py): it owns the serial ports and the
     cameras, and keeps the safety rules (rest pose, torque, watchdog)."""
 
     # xlerobot-teleop, the motor and camera backend.

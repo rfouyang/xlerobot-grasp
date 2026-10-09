@@ -2518,14 +2518,14 @@ kinematics:
   load_meshes: false
   load_tool_frames_with_mesh: false
   lock_joints:
-    Rotation: -0.0444963062046906
-    Pitch: 3.1527167301409658
+    Rotation: -0.04296195081832196
+    Pitch: 3.154251085527335
     Elbow: 3.246312408709453
     Wrist_Pitch: -0.06060703776156134
     Wrist_Roll: 1.4672273382150134
     Jaw: 0.0251006711409396
     Jaw_2: 1.3
-    head_pan_joint: 0.05592725383313698
+    head_pan_joint: 0.05439289844676834
     head_tilt_joint: 0.6721819153257721
   mesh_link_names: *id001
   self_collision_buffer:

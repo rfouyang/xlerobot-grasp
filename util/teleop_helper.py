@@ -1,4 +1,4 @@
-"""xlerobot-teleop 服务的客户端：真机的头部 RGB-D、状态、检测叠加（真机只经它访问）。"""
+"""机器人进程（app/robot_main.py，8011）的客户端：真机的头部 RGB-D、状态、检测叠加（真机只经它访问）。"""
 
 from __future__ import annotations
 
