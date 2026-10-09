@@ -159,12 +159,13 @@ class TaskRunner:
         self.planning.perception.point_area = None
         self.alignment.prompts = (chosen["prompt"],)
 
-    def set_target(self, prompt: str | None = None, point: list[float] | None = None, clear: bool = False) -> dict:
-        """The interactive grasp page's choice (perception/target.py); not while a step or a full run is going."""
+    def set_target(self, prompt: str | None = None, point: list[float] | None = None, clear: bool = False, side: str | None = None) -> dict:
+        """The task pages' choice (perception/target.py): a click, a name, a name on one side of the desk, or clear; not
+        while a step or a full run is going."""
         if self.running or self.auto:
             result = {"ok": False, "error": "正在执行，等这一轮结束再选"}
             return result
-        result = self.selector.choose(prompt, point, clear)
+        result = self.selector.choose_side(prompt, side) if prompt and side in ("left", "right") else self.selector.choose(prompt, point, clear)
         if result["ok"]:
             self.apply_target()
         return result

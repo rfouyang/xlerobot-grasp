@@ -189,6 +189,119 @@ async function chooseTarget(body) {
   notify(result.ok ? "" : `没有选上目标：${result.error || "看调试详情里的日志"}`);
 }
 
+// --- voice: record (16 kHz mono PCM) -> BytePlus ASR -> the text box; a Chinese instruction -> GPT -> target ---
+
+const voice = { stream: null, context: null, processor: null, chunks: [], started: 0, timer: null, busy: false };
+const VOICE_IDLE = "● 语音";
+
+function voiceState(text, tone = "text-gray-500") {
+  const line = byId("voice-state");
+  line.textContent = text;
+  line.className = `text-xs ${tone}${text ? "" : " hidden"}`;
+}
+
+async function startRecording() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    voiceState("无法使用麦克风：浏览器只在 https 或 localhost 下给麦克风（iPad 需要 HTTPS）。可以改用文字。", "text-orange-700");
+    return;
+  }
+  try {
+    voice.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  } catch (error) {
+    voiceState(`无法使用麦克风：${error.message}。请检查浏览器的麦克风权限，或改用文字。`, "text-orange-700");
+    return;
+  }
+  voice.context = new AudioContext({ sampleRate: 16000 });
+  const source = voice.context.createMediaStreamSource(voice.stream);
+  voice.processor = voice.context.createScriptProcessor(4096, 1, 1);
+  voice.chunks = [];
+  voice.processor.onaudioprocess = (event) => voice.chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+  source.connect(voice.processor);
+  voice.processor.connect(voice.context.destination);
+  voice.started = Date.now();
+  const button = byId("mode-voice");
+  button.classList.add("border-red-600", "bg-red-600", "text-white");
+  voice.timer = setInterval(() => {
+    const seconds = Math.floor((Date.now() - voice.started) / 1000);
+    button.textContent = `■ 停止 ${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+    if (seconds >= 30) stopRecording();
+  }, 250);
+  voiceState("正在录音：说完再点一下「停止」，录音期间不会执行任何动作。", "text-red-700");
+}
+
+// Float32 at the context's rate -> int16 at 16 kHz (most browsers give 16 kHz as asked; others are resampled here).
+function pcm16(chunks, rate) {
+  const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const all = new Float32Array(length);
+  let offset = 0;
+  for (const chunk of chunks) { all.set(chunk, offset); offset += chunk.length; }
+  const ratio = rate / 16000;
+  const out = new Int16Array(Math.floor(length / ratio));
+  for (let i = 0; i < out.length; i++) {
+    const sample = Math.max(-1, Math.min(1, all[Math.floor(i * ratio)]));
+    out[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+  }
+  return out;
+}
+
+async function stopRecording() {
+  clearInterval(voice.timer);
+  const button = byId("mode-voice");
+  button.classList.remove("border-red-600", "bg-red-600", "text-white");
+  button.textContent = VOICE_IDLE;
+  if (!voice.context) return;
+  voice.processor.disconnect();
+  voice.stream.getTracks().forEach((track) => track.stop());
+  const rate = voice.context.sampleRate;
+  await voice.context.close();
+  voice.context = null;
+  const pcm = pcm16(voice.chunks, rate);
+  voice.busy = true;
+  button.disabled = true;
+  voiceState("正在将语音转成文字……", "text-blue-700");
+  const response = await fetch("/api/voice/transcribe", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: pcm.buffer }).catch(() => null);
+  const result = response && response.ok ? await response.json() : { ok: false, error: "网页服务没响应" };
+  voice.busy = false;
+  button.disabled = false;
+  if (result.ok) {
+    byId("target-text").value = result.text;
+    setMode("text");
+    voiceState(`转写完成（${result.seconds} s）：可以先改一改，再点「发送」。`, "text-emerald-700");
+  } else {
+    voiceState(`${result.error || "没听清"}。可以再录一次，或改用文字。`, "text-orange-700");
+  }
+}
+
+function toggleRecording() {
+  if (voice.busy) return;
+  if (voice.context) stopRecording();
+  else startRecording();
+}
+
+function speak(text) {
+  if (!text) return;
+  fetch("/api/voice/say", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
+    .then((response) => (response.ok ? response.blob() : null))
+    .then((blob) => { if (blob) new Audio(URL.createObjectURL(blob)).play().catch(() => {}); })
+    .catch(() => {});
+}
+
+// A typed or spoken instruction: Chinese (or any non-ASCII) goes through the dialog; a plain English name to YOLOE.
+async function sendInstruction(text) {
+  if (!/[^\x00-\x7f]/.test(text)) {
+    await chooseTarget({ prompt: text });
+    return;
+  }
+  voiceState("正在理解指令……", "text-blue-700");
+  const result = await request("/api/voice/command", { text });
+  const understood = result.understood || {};
+  const where = { left: "左边", right: "右边" }[understood.side] || "最近的";
+  const placeNote = understood.place === "box" && !PAGE.place ? "（要放进盒子请用「抓取摆放」页）" : "";
+  voiceState(result.ok ? `理解为：${where}的「${understood.object}」${understood.by === "words" ? "（词表）" : ""}${placeNote}` : `${result.error || "没理解"}`,
+    result.ok ? "text-emerald-700" : "text-orange-700");
+  speak(result.reply);
+}
+
 async function chooseArm(arm) {
   const result = await request(`${GRASP_API}/api/real/arm`, { arm });
   notify(result.ok ? "" : `没有改手臂：${result.error}`);
@@ -244,9 +357,10 @@ App.ready.then(() => {
   });
   byId("target-form").addEventListener("submit", (event) => {
     event.preventDefault();
-    const prompt = byId("target-text").value.trim();
-    if (prompt) chooseTarget({ prompt });
+    const text = byId("target-text").value.trim();
+    if (text) sendInstruction(text);
   });
+  byId("mode-voice").addEventListener("click", toggleRecording);
   byId("btn-target-clear").addEventListener("click", () => chooseTarget({ clear: true }));
   byId("mode-click").addEventListener("click", () => setMode("click"));
   byId("mode-text").addEventListener("click", () => setMode("text"));

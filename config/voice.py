@@ -45,3 +45,39 @@ class ByteplusTtsConfig:
     SAMPLE_RATE = 24000
     # Clean, clear and gentle (g1-action-recorder/config/byteplus_voices.json lists the others).
     VOICE = "en_female_nadia_uranus_bigtts"
+    # The task pages' spoken replies are Chinese (respeaker-voicebot's voice).
+    REPLY_VOICE = "zh_female_yingyujiaoxue_uranus_bigtts"
+
+
+class ByteplusAsrConfig:
+    """BytePlus Seed ASR, bidirectional streaming over a WebSocket: the endpoint, resource and framing proven in
+    services/respeaker-voicebot (util/asr_helper.py, from robot-concierge). Same key as the TTS."""
+
+    URL = "wss://voice.ap-southeast-1.bytepluses.com/api/v3/sauc/bigmodel_async"
+    RESOURCE_ID = "volc.seedasr.sauc.duration"
+    MODEL = "bigmodel"
+    UID = "xlerobot-grasp"
+    # 16 kHz mono int16 PCM, sent in blocks of FRAME_MS.
+    SAMPLE_RATE = 16000
+    FRAME_MS = 200
+    # How long an utterance stays open after the last audio (ms), and the wait for the final transcript (s).
+    END_WINDOW_MS = 1000
+    FINAL_TIMEOUT_S = 10.0
+    # A recording longer than this is cut (s): the page records one instruction.
+    MAX_SECONDS = 30.0
+
+
+class DialogConfig:
+    """A spoken or typed instruction on a task page -> what to grasp (an English noun for YOLOE), which side of the
+    desk, and a short spoken reply. GPT (the key OPENAI_API_KEY in .env) understands it; without the network a word
+    table does."""
+
+    OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+    MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+    TIMEOUT_S = 20.0
+    # The word table: Chinese names -> YOLOE prompts (YOLOE's text encoder is English).
+    # 水平: the ASR hears 水瓶 as it (2026-10-09).
+    OBJECT_WORDS = {"水瓶": "bottle", "水平": "bottle", "瓶子": "bottle", "瓶": "bottle", "喷雾": "spray bottle", "杯子": "cup", "杯": "cup",
+                    "罐子": "can", "易拉罐": "can", "罐": "can", "盒子": "box", "碗": "bowl", "香蕉": "banana", "苹果": "apple",
+                    "橙子": "orange", "手机": "cell phone", "遥控器": "remote", "书": "book", "笔": "pen"}
+    SIDE_WORDS = {"左": "left", "右": "right"}

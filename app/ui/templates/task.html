@@ -53,14 +53,15 @@
                 <div class="flex gap-1.5" role="group">
                   <button id="mode-click" type="button" class="{{ seg }} border-blue-600 bg-blue-50 font-semibold text-blue-600">点选</button>
                   <button id="mode-text" type="button" class="{{ seg }} border-gray-200 bg-white">文字</button>
-                  <button id="mode-voice" type="button" class="{{ seg }} border-gray-200 bg-white" disabled title="语音输入（BytePlus）即将支持">语音</button>
+                  <button id="mode-voice" type="button" class="{{ seg }} border-gray-200 bg-white" title="点一下开始录音，再点一下停止并转成文字">● 语音</button>
                 </div>
                 <form id="target-form" class="flex min-w-60 flex-1 gap-2">
-                  <input id="target-text" type="text" placeholder="在头部画面点一下，或输入名称（英文，如 bottle、cup）后发送" class="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50" />
+                  <input id="target-text" type="text" placeholder="在头部画面点一下；或说 / 输入「把右边的水瓶抓起来」、bottle、cup 后发送" class="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50" />
                   <button id="btn-target-send" type="submit" class="{{ primary }} px-4">发送</button>
                   <button id="btn-target-clear" type="button" class="{{ button }}" title="回到默认：最近的瓶子">清除</button>
                 </form>
               </div>
+              <p id="voice-state" class="hidden text-xs text-gray-500"></p>
               <div class="flex flex-wrap items-center gap-2">
                 <span id="target-chosen" class="rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">已选择：—</span>
                 {% if place %}

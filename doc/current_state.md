@@ -32,9 +32,12 @@
   - 头部画面标注单独开了线程，拿 GPU 锁。
   - 头部相机改为 15 fps。
 - **另一个会话写的部分**（已收进来）：`util/demo_preferences.py` 和 xlerobot-demo 项目，提供 GraspMolmo / DenseMatcher / HOGraspFlow 的候选重排序，默认是 baseline。规划时用桌面守卫检查每一段（`desk_guard.check_segments`）。
+- **重构后验证过**：19:56 左手（自动选手）、19:57 右手（手动选）各完整抓一次，瓶子都立着。旧服务已改名为 `_archive_*`。
+- **语音**（任务页「● 语音」）：
+  - 浏览器录 16 kHz PCM → `/api/voice/transcribe`（BytePlus ASR，`util/byteplus_asr_helper.py`）→ 文字填进输入框（可以改）；
+  - 点「发送」：中文走 `/api/voice/command`，GPT（`gpt-5-mini`，`OPENAI_API_KEY`）理解出物体、左右、放置，没网时用 `DialogConfig` 的词表；左边 / 右边由 YOLOE 在头部画面里选具体的那个；
+  - 回答用 BytePlus TTS 在页面播放（`/api/voice/say`）。
 - **还没做**：
-  - **重构后两只手的真机完整抓取各一次**：19:35 左手只走到「到瓶子后方」就被守卫拦下，这个问题上面已经修了；
-  - 语音输入（BytePlus ASR）；
   - 放到桌面点；
   - 标定页的采样、计算、验证（现在仍用 `output/scratch_20261006` 里的脚本）；
   - 旧服务归档。

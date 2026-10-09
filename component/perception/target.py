@@ -101,6 +101,27 @@ class TargetSelector:
         result = {"ok": True, "target": self.target}
         return result
 
+    def choose_side(self, prompt: str, side: str) -> dict:
+        """A name and a side of the desk ("left" / "right", the robot's): every detection of the name in the head image,
+        the leftmost or rightmost one (the head camera looks forward, so the robot's left is the image's left), chosen
+        by name at its centre."""
+        with self.gpu_lock:
+            rgb = self.teleop.rgbd()["color"]
+            detections = self.planning.perception.detector.detect(rgb, (prompt,), conf=PerceptionConfig.CONFIDENCE)
+            # A phrase YOLOE does not know ("water bottle") often works as its head noun ("bottle").
+            if not detections and " " in prompt.strip():
+                prompt = prompt.strip().split()[-1]
+                detections = self.planning.perception.detector.detect(rgb, (prompt,), conf=PerceptionConfig.CONFIDENCE)
+        if not detections:
+            result = {"ok": False, "error": f"头部画面里没找到「{prompt}」"}
+            return result
+        centre = lambda detection: (detection.box[0] + detection.box[2]) / 2
+        picked = min(detections, key=centre) if side == "left" else max(detections, key=centre)
+        point = [float(centre(picked)), float((picked.box[1] + picked.box[3]) / 2)]
+        self.report(f"{'左' if side == 'left' else '右'}边的「{prompt}」：{len(detections)} 个里选了 u {point[0]:.0f}")
+        result = self.choose(prompt, point)
+        return result
+
     def on_desk(self, frame: dict, mask: np.ndarray) -> tuple[float, float, float] | None:
         """Roughly where an object stands (x, y of its axis in base_link) and how tall it is, from its mask: the median of
         its seen points, pushed back by a typical radius away from the camera (only its front is seen)."""

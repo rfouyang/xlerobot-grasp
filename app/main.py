@@ -41,6 +41,7 @@ from app.api.real_grasp_api import create_real_grasp_api
 from app.api.robot_operation_api import create_robot_operation_api
 from app.api.robot_proxy_api import create_robot_proxy_api
 from app.api.system_api import create_system_api
+from app.api.voice_api import create_voice_api
 from component.system_check.supervisor import Supervisor
 from app.ui.routes import create_ui, mount_ui_static
 from config.settings import PathConfig, ServerConfig, use_utf8_output
@@ -57,6 +58,7 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     app.include_router(create_system_api(supervisor))
     app.include_router(create_calibration_api())
     app.include_router(create_planning_api())
+    app.include_router(create_voice_api())
     for router in (create_robot_operation_api(), create_grasp_generation_api(), create_grasp_execution_api(), create_real_grasp_api()):
         app.include_router(router, prefix=GRASP_PREFIX)
     mount_ui_static(app)
