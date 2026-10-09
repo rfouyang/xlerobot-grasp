@@ -49,6 +49,22 @@ def create_real_grasp_api() -> APIRouter:
         response = grasp_context.real_status()
         return response
 
+    @router.post("/api/real/algorithms")
+    def algorithms(request: dict):
+        real = grasp_context.real
+        if not real.gpu_lock.acquire(blocking=False):
+            raise HTTPException(409, "GPU 正在使用，稍后设置算法")
+        try:
+            if real.running or real.auto or real.next > 1:
+                raise HTTPException(409, "请在规划之前设置算法")
+            try:
+                real.planning.preferences.configure(request)
+            except (ValueError, KeyError) as error:
+                raise HTTPException(422, str(error)) from error
+            return {"ok": True, "options": real.planning.preferences.options}
+        finally:
+            real.gpu_lock.release()
+
     @router.post("/api/real/stage")
     def stage(request: StageRequest):
         """Plain def: runs in a worker thread while the page polls the status."""
@@ -83,6 +99,30 @@ def create_real_grasp_api() -> APIRouter:
     def stop():
         response = grasp_context.real_stop()
         return response
+
+    @router.get("/api/real/semantic.jpg")
+    def semantic_image():
+        import cv2
+        import numpy as np
+        preferences = grasp_context.real.planning.preferences
+        report = preferences.report
+        if not report.get("observation_image") or not preferences.directory:
+            raise HTTPException(404, "尚未生成语义建议")
+        with np.load(Path(preferences.directory.name)/"frame.npz", allow_pickle=False) as archive:
+            image = cv2.cvtColor(archive["color"], cv2.COLOR_RGB2BGR)
+        pixel = report.get("prior", {}).get("pixel")
+        if pixel:
+            centre = tuple(np.round(pixel).astype(int))
+            cv2.drawMarker(image, centre, (255,0,255), cv2.MARKER_CROSS, 28, 3)
+            cv2.circle(image, centre, 20, (255,0,255), 2)
+        for rank, row in enumerate(report.get("ranked", [])[:5]):
+            centre = tuple(np.round(row["pixel"]).astype(int))
+            cv2.circle(image, centre, 6, (0,255,255), 2)
+            cv2.putText(image, str(rank+1), (centre[0]+8,centre[1]), cv2.FONT_HERSHEY_SIMPLEX,.45,(0,255,255),1)
+        ok, encoded = cv2.imencode(".jpg", image)
+        if not ok:
+            raise HTTPException(500, "语义图编码失败")
+        return Response(encoded.tobytes(), media_type="image/jpeg", headers={"Cache-Control":"no-store"})
 
     @router.get("/api/real/plan.jpg")
     def plan_image():

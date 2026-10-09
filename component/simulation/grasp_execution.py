@@ -11,7 +11,6 @@ if str(BASE_DIR) not in sys.path:
 
 import time
 
-import numpy as np
 from loguru import logger
 
 from component.planning.grasp_selection import GraspSelection

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from config.settings import BASE_DIR
 
 
 class RealRobotConfig:

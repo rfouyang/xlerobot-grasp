@@ -16,7 +16,7 @@ from loguru import logger
 from component.perception.preview import DepthPreview
 from component.simulation.grasp_execution import GraspExecution
 from component.grasp_generation.service import GraspGeneration
-from component.task.execution import RealGraspExecution
+from component.task.runner import TaskRunner
 from component.simulation.robot_operation import RobotOperation
 from component.simulation.robot_simulation import RobotSimulation
 from component.simulation.scene_display import SceneDisplay
@@ -36,7 +36,7 @@ class GraspApplication:
         self.execution = None
         self.simulation = None
         # The real robot, through the xlerobot-teleop service.
-        self.real: RealGraspExecution | None = None
+        self.real: TaskRunner | None = None
         # The head depth live on the grasp page, raw and refined.
         self.depth_preview: DepthPreview | None = None
         self.display = SceneDisplay()
@@ -58,7 +58,7 @@ class GraspApplication:
         self.display.start()
         self.display.follow(self.robot.joint_state, lambda: self.simulation.object_pose)
         # Shares GraspGenX with the simulation; MoveIt's mock is what the real arm follows.
-        self.real = RealGraspExecution(moveit, TeleopHelper(), prediction=self.generation.prediction)
+        self.real = TaskRunner(moveit, TeleopHelper(), prediction=self.generation.prediction)
         # Shares detection's LingBot-Depth (None when DEPTH_REFINE is off: then only the raw depth).
         perception = self.real.planning.perception
         self.depth_preview = DepthPreview(TeleopHelper(), perception.refiner if perception.refine else None,

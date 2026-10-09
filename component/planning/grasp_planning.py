@@ -9,7 +9,6 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-import math
 from dataclasses import dataclass
 
 import cv2
@@ -27,7 +26,7 @@ from component.grasp_generation.tabletop_scene import PlacedObject, TabletopScen
 from component.perception.service import Perception, Target
 from component.planning.arm import RIGHT, Arm
 from component.calibration.check import CalibrationCheck, head_camera_pose
-from config.planning import MotionConfig, RealPlanningConfig
+from config.planning import GripperConfig, MotionConfig, RealPlanningConfig
 from config.settings import PathConfig, use_utf8_output
 from util.joint_mapping_helper import JointMappingHelper
 from util.motion_plan_helper import JointTrajectory, MotionPlanHelper
@@ -60,6 +59,8 @@ class RealGraspPlanning:
         # GraspGenX is large; the simulation's predictor can be shared.
         self.prediction = kwargs.get("prediction") or GraspPrediction()
         self.selection = GraspSelection()
+        from util.demo_preferences import DemoPreferences
+        self.preferences = DemoPreferences()
         self.urdf = yourdfpy.URDF.load(str(PathConfig.URDF_PATH), load_meshes=False, build_scene_graph=True)
         self.planner: MotionPlanHelper | None = None
         # Every arm motion is checked against the desk (component/real_robot/desk_guard.py); its plane is measured here.
@@ -183,6 +184,8 @@ class RealGraspPlanning:
 
     def plan(self, real_scene: RealScene, arm: Arm = RIGHT) -> tuple[ReachableGrasp, dict[str, JointTrajectory]] | None:
         self.arm = arm
+        self.urdf.update_cfg(real_scene.urdf_joints)
+        self.preferences.prepare(real_scene, np.linalg.inv(head_camera_pose(self.urdf)))
         self.prepare_planner(real_scene.urdf_joints, arm)
         candidates = self.prediction.predict(real_scene.points, real_scene.scene)
         box = real_scene.placed.mesh.bounding_box_oriented
@@ -204,9 +207,15 @@ class RealGraspPlanning:
         level = self.selection.level(self.reachability.filter(seated, start))
         ordered = [grasp for grasp in level if self.roll_ok(np.array([grasp.joints]))]
         logger.info("候选 {} → 侧抓中段 {} → {}能水平够到 {} → 腕部转动在真机范围内 {}", len(candidates), len(seated), arm.label, len(level), len(ordered))
+        import json
+        gripper = json.loads((GripperConfig.DIR / "config.json").read_text())
+        ordered = self.preferences.order(ordered, gripper)
         for grasp in ordered[: RealPlanningConfig.MAX_PLAN_TRIES]:
             segments = self.planner.plan_grasp(start, grasp.tool_pose, MotionConfig.APPROACH_DISTANCE, MotionConfig.LIFT_HEIGHT)
             if segments is not None and all(self.roll_ok(segment.positions) for segment in segments.values()):
+                self.preferences.report["selected"] = {"candidate": grasp.index, "score": float(grasp.score)}
+                if self.preferences.report.get("ranked"):
+                    self.preferences.report["selected"].update(next((r for r in self.preferences.report["ranked"] if r.get("candidate") == grasp.index), {}))
                 return grasp, segments
         return None
 
@@ -249,6 +258,18 @@ class RealGraspPlanning:
             camera = (camera_from_base @ np.hstack([tips, np.ones((len(tips), 1))]).T)[:3]
             uv = (frame["K"] @ camera)[:2] / camera[2]
             cv2.polylines(image, [uv.T.astype(np.int32)], False, colors[name], 2)
+        report = self.preferences.report
+        pixel = report.get("prior", {}).get("pixel")
+        if pixel:
+            centre = tuple(np.round(pixel).astype(int))
+            cv2.drawMarker(image, centre, (255, 0, 255), cv2.MARKER_CROSS, 28, 3)
+            cv2.putText(image, "GraspMolmo", (centre[0]+12, centre[1]-12), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 0, 255), 2)
+        selected_pixel = report.get("selected", {}).get("pixel")
+        if selected_pixel:
+            centre = tuple(np.round(selected_pixel).astype(int))
+            cv2.circle(image, centre, 9, (0, 255, 255), 2)
+            if pixel:
+                cv2.line(image, tuple(np.round(pixel).astype(int)), centre, (0, 255, 255), 1)
         out = PathConfig.DEMO_DIR / "real_grasp_planning"
         out.mkdir(parents=True, exist_ok=True)
         path = out / "plan.jpg"

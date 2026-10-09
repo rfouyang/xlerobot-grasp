@@ -2518,7 +2518,7 @@ kinematics:
   load_meshes: false
   load_tool_frames_with_mesh: false
   lock_joints:
-    Rotation: -0.0444963062046906
+    Rotation: -0.04296195081832196
     Pitch: 3.154251085527335
     Elbow: 3.246312408709453
     Wrist_Pitch: -0.06060703776156134
