@@ -315,3 +315,19 @@ xlerobot-grasp/
 - 标定页的采样、计算、验证；
 - iPad 的 HTTPS。
 
+## 7. 验收清单（2026-10-09 晚）
+
+1. **语音（电脑）**：`localhost:8010/grasp` → 「● 语音」说「把右边的瓶子抓起来」→ 停止 → 文字出现在输入框 → 发送 → 页面念出回答，「已选择」变成瓶子。
+2. **iPad**：
+   - 在 Windows 管理员 PowerShell 里放行端口：
+     ```
+     New-NetFirewallRule -DisplayName "XLeRobot 8010 8443" -Direction Inbound -Protocol TCP -LocalPort 8010,8443 -Action Allow
+     New-NetFirewallHyperVRule -Name XLeRobot -DisplayName "XLeRobot" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol TCP -LocalPorts 8010,8443 -Action Allow
+     ```
+   - iPad 打开 `https://192.168.31.57:8443/grasp`（或 Tailscale 的 `https://100.120.140.36:8443/grasp`），证书警告选继续访问，再试一次语音。
+3. **抓取摆放 → 桌面点**（真机，右手）：选「桌面点」→ 在画面里点瓶子右边 5–10 cm 的空桌面 → 「确认并开始」→ 看执行前确认卡片 → 「确认并执行」→ 瓶子放到点的位置，立着。
+4. **抓取摆放 → 盒子**（真机）：「盒子」→ 开始。
+5. **物体抓取**：执行前确认卡片 → 完成后的「新建任务」。
+6. **相机标定**（不动机器人）：标定板放桌上 → 开始会话（左腕）→ 摆 6 个以上姿态、每个采一帧 → 计算 → 看结果 → 「保存为新版本」（草稿，不启用）。
+7. **系统设置**：自检全绿（只有一条「左右腕相机区分」的提醒）。
+
