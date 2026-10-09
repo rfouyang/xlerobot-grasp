@@ -35,6 +35,18 @@ def create_planning_api() -> APIRouter:
                     "semantic_image": bool(preferences.report.get("observation_image")), "target": status["target"]}
         return response
 
+    @router.get("/api/planning/records")
+    def records(limit: int = 30):
+        """The evaluation records: the latest attempts first, and the success counts."""
+        from app.context import grasp_context
+
+        runner = getattr(grasp_context, "real", None)
+        if runner is None:
+            response = {"recent": [], "summary": {}}
+            return response
+        response = {"recent": runner.records.recent(limit), "summary": runner.records.summary()}
+        return response
+
     return router
 
 

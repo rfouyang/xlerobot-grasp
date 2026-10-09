@@ -37,6 +37,21 @@
               </div>
             </section>
 
+            <section class="{{ card }}">
+              <div class="{{ card_head }}"><h2 class="{{ card_title }}">评估记录</h2><span id="records-summary" class="text-xs text-gray-500">还没有记录</span></div>
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-xs">
+                  <thead class="bg-gray-50"><tr>
+                    <th class="px-3 py-2 text-start font-medium text-gray-500">时间</th><th class="px-3 py-2 text-start font-medium text-gray-500">任务</th>
+                    <th class="px-3 py-2 text-start font-medium text-gray-500">手臂</th><th class="px-3 py-2 text-start font-medium text-gray-500">物体 / 位置</th>
+                    <th class="px-3 py-2 text-start font-medium text-gray-500">候选（分数）</th><th class="px-3 py-2 text-start font-medium text-gray-500">排序</th>
+                    <th class="px-3 py-2 text-start font-medium text-gray-500">对准</th><th class="px-3 py-2 text-start font-medium text-gray-500">结果</th>
+                  </tr></thead>
+                  <tbody id="records" class="divide-y divide-gray-100"></tbody>
+                </table>
+              </div>
+            </section>
+
             <div class="grid gap-4 md:grid-cols-2">
               <section class="{{ card }}">
                 <div class="{{ card_head }}"><h2 class="{{ card_title }}">腕部视觉对齐</h2></div>

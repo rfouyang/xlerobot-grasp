@@ -97,6 +97,29 @@ async function poll() {
     : "对准之后显示：瓶子左边缘离定指多远、还要左移多少。";
 }
 
+const TASK_NAMES = { pick_target: "物体抓取", place_in_box: "放进盒子", place_at_spot: "放到桌面点", grasp: "抓取（旧）", move_right: "瓶子右移" };
+
+async function loadRecords() {
+  const response = await fetch("/api/planning/records?limit=30").catch(() => null);
+  if (!response || !response.ok) return;
+  const data = await response.json();
+  const summary = data.summary || {};
+  const rate = (group) => Object.entries(group || {}).map(([name, value]) => `${name === "left" ? "左手" : name === "right" ? "右手" : name} ${value.ok}/${value.attempts}`).join("，");
+  document.getElementById("records-summary").textContent = summary.attempts == null ? "还没有记录"
+    : `成功 ${summary.ok}/${summary.attempts}（规划失败另计 ${summary.plan_failed}）· 手臂：${rate(summary.arm)} · 排序：${rate(summary.mode)}`;
+  document.getElementById("records").innerHTML = data.recent.map((row) => {
+    const object = row.object ? `${esc(row.target?.label || "")} (${row.object.axis_xy.map((v) => v.toFixed(2)).join(", ")})` : esc(row.target?.label || "");
+    const result = row.outcome === "ok" ? `<span class="font-semibold text-emerald-700">✓ 成功</span>${row.upright?.standing ? `，立着 ${row.upright.height_cm} cm` : ""}`
+      : row.outcome === "plan_failed" ? `<span class="font-semibold text-orange-700">规划失败</span>：${esc(row.reason || "")}`
+      : `<span class="font-semibold text-red-700">✗ ${esc(row.failed_step || "")}</span>：${esc(row.reason || "")}`;
+    const ranking = row.ranking ? `${esc(row.ranking.mode)}${row.ranking.selected?.semantic_rank ? ` #${row.ranking.selected.semantic_rank}` : ""}` : "—";
+    return `<tr class="align-top"><td class="px-3 py-1.5 font-mono text-gray-500">${esc(row.time || "").slice(5)}</td><td class="px-3 py-1.5">${TASK_NAMES[row.action] || esc(row.action)}</td>
+      <td class="px-3 py-1.5">${row.arm === "left" ? "左" : "右"}${row.arm_choice && row.arm_choice !== "auto" ? "（手动）" : ""}</td><td class="px-3 py-1.5">${object}</td>
+      <td class="px-3 py-1.5 font-mono">${row.grasp ? `#${row.grasp.candidate}（${row.grasp.score}）` : "—"}</td><td class="px-3 py-1.5">${ranking}</td>
+      <td class="px-3 py-1.5 font-mono">${row.align ? `${row.align.gap_cm} cm` : "—"}</td><td class="px-3 py-1.5">${result}</td></tr>`;
+  }).join("") || '<tr><td class="px-3 py-3 text-gray-500" colspan="8">还没有记录：每次真机任务（规划之后）都会记一行</td></tr>';
+}
+
 async function applyAlgorithm(event) {
   event.preventDefault();
   const body = { mode: document.getElementById("algo-mode").value, task: document.getElementById("algo-task").value.trim() || "Pick up the bottle" };
@@ -113,4 +136,6 @@ App.ready.then(() => {
   document.getElementById("algo-form").addEventListener("submit", applyAlgorithm);
   poll();
   setInterval(poll, 1500);
+  loadRecords();
+  setInterval(loadRecords, 5000);
 });

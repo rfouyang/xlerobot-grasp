@@ -24,6 +24,7 @@ from component.planning.box_placement import BoxPlacement
 from component.planning.grasp_planning import RealGraspPlanning, RealScene
 from component.task.checks import TaskChecks
 from component.task.motion import ArmMotion
+from component.task.records import GraspRecords, reason_from, upright_from
 from component.task.tasks import ACTIONS, JAWS, SEGMENTS
 from component.task.wrist_alignment import WristAlignment
 from config.planning import RealPlanningConfig
@@ -77,6 +78,10 @@ class TaskRunner:
         self.too_left: dict | None = None
         # How far the shift step turns the bottle right (m), set at planning.
         self.shift_m = 0.0
+        # The evaluation records (抓取规划): the attempt opened when planning succeeds, closed by the last step or a failure.
+        self.records = GraspRecords()
+        self.attempt: dict | None = None
+        self.attempt_from = 0
         # Where 抓取摆放 puts it when the place is a desk point: {"uv": the click, "xy": on the desk (m)}.
         self.place_spot: dict | None = None
         # The page's arm choice for the interactive grasp: None = the nearer shoulder (ArmConfig.CHOICE), else a side.
@@ -149,6 +154,8 @@ class TaskRunner:
         self.align_gap = 0.0
         self.stage_seconds = {}
         self.align_info = None
+        # An attempt reset half way is dropped, not recorded.
+        self.attempt = None
         self.use_arm(RIGHT)
         self.apply_target()
         self.report("流程重置：从「准备」开始" + ("（把瓶子往右移）" if action == "move_right" else "（照常抓取，不看是否太靠左）" if ignore_left else ""))
@@ -310,8 +317,52 @@ class TaskRunner:
         else:
             self.failed = True
             self.report(f"失败：{label}（真机停在原地；重置后从准备开始，或用顶栏的力矩开关回停靠位）")
+        self.record(name, ok)
         result = {"ok": ok, "next": self.next}
         return result
+
+    # --- evaluation records ---
+
+    def record(self, name: str, ok: bool) -> None:
+        """Opens the attempt when planning succeeds; writes it when the last step is done or a step fails. A failed
+        plan is one line too (what was asked, why it did not plan). Never stops the task."""
+        try:
+            if name == "plan" and ok:
+                self.attempt = self.attempt_opened()
+                self.attempt_from = len(self.progress)
+            elif name == "plan" and not self.too_left:
+                self.records.append({**self.attempt_base(), "outcome": "plan_failed", "reason": reason_from(self.progress),
+                                     "funnel": {k: v for k, v in self.planning.stats.items() if k != "kept"}})
+            elif self.attempt is not None and (not ok or self.next >= len(self.stages)):
+                progress = self.progress[self.attempt_from:]
+                self.attempt.update(outcome="ok" if ok else "failed", failed_step=None if ok else name,
+                                    reason="" if ok else reason_from(self.progress), stage_seconds=dict(self.stage_seconds),
+                                    align=self.align_info, upright=upright_from(progress),
+                                    seconds=round(sum(self.stage_seconds.values()), 1))
+                self.records.append(self.attempt)
+                self.attempt = None
+        except Exception as error:
+            logger.warning("评估记录没写成：{}", error)
+
+    def attempt_base(self) -> dict:
+        target = self.target
+        base = {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "action": self.action, "arm": self.arm.side, "arm_choice": self.arm_override or "auto",
+                "target": {key: target.get(key) for key in ("label", "prompt", "point", "by")}, "place_spot": self.place_spot}
+        return base
+
+    def attempt_opened(self) -> dict:
+        bounds = self.scene.placed.mesh.bounds
+        report = self.planning.preferences.report
+        attempt = {**self.attempt_base(),
+                   "object": {"axis_xy": [round(float(v), 3) for v in bounds.mean(axis=0)[:2]],
+                              "height_m": round(float(bounds[1, 2] - self.scene.scene.table_top_z), 3),
+                              "radius_m": round(float((bounds[1, 0] - bounds[0, 0]) / 2), 3)},
+                   "grasp": {"candidate": int(self.grasp.index), "score": round(float(self.grasp.score), 3),
+                             "tool_xyz": [round(float(v), 3) for v in self.grasp.tool_pose[:3, 3]]},
+                   "ranking": {"mode": self.planning.preferences.options.get("mode", "baseline"),
+                               "selected": report.get("selected"), "used": report.get("used")},
+                   "funnel": {k: v for k, v in self.planning.stats.items() if k != "kept"}}
+        return attempt
 
     # --- steps ---
 
