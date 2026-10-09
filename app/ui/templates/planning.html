@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{# 抓取规划 (design: 05): the research page. What the last plan looked at (GraspGenX candidates and how they thinned
+   out), how the semantic / demo methods re-ranked them, what was chosen and why others were refused; the algorithm
+   choice for the next plan; the wrist alignment; the human demo video (processed in xlerobot-demo). #}
+{% block title %}抓取规划{% endblock %}
+{% block subtitle %}研究抓哪里最合适：GraspGenX 生成 SO-101 候选，语义 / 人的示范只给候选重新排序，可达和碰撞仍由 IK 与桌面守卫决定。{% endblock %}
+{% block scripts %}<script src="/static/ui/planning.js?v={{ asset_version('planning.js') }}" defer></script>{% endblock %}
+{% block content %}
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+          <div class="flex min-w-0 flex-col gap-4">
+            <div class="grid gap-3 md:grid-cols-2">
+              <figure class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
+                <div class="relative aspect-[4/3] bg-gray-900">
+                  <img id="plan-image" class="absolute inset-0 hidden h-full w-full object-contain" alt="规划图" />
+                  <p id="plan-empty" class="absolute inset-0 m-auto h-fit px-6 text-center text-xs text-gray-400">还没有规划：在物体抓取或抓取摆放页执行到「检测并规划」</p>
+                </div>
+                <figcaption class="px-3 py-2 text-xs"><span class="font-semibold text-gray-800">头部 RGB / 选中抓取与路径</span>
+                  <span class="text-gray-500">黄：接近 · 绿：伸入 · 橙：抬起 · 品红：语义点</span></figcaption>
+              </figure>
+              <figure class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
+                <div class="relative aspect-[4/3] bg-gray-900">
+                  <img id="semantic-image" class="absolute inset-0 hidden h-full w-full object-contain" alt="语义建议" />
+                  <p id="semantic-empty" class="absolute inset-0 m-auto h-fit px-6 text-center text-xs text-gray-400">基线模式没有语义图：选 GraspMolmo / DenseMatcher 等算法后再规划</p>
+                </div>
+                <figcaption class="px-3 py-2 text-xs"><span class="font-semibold text-gray-800">语义 / 示范建议</span>
+                  <span class="text-gray-500">品红十字：建议的抓取点 · 黄圈：排序前 5 的候选</span></figcaption>
+              </figure>
+            </div>
+
+            <section class="{{ card }}">
+              <div class="{{ card_head }}"><h2 class="{{ card_title }}">候选排序</h2><span id="ranking-note" class="text-xs text-gray-500"></span></div>
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead class="bg-gray-50"><tr id="ranking-head"></tr></thead>
+                  <tbody id="ranking" class="divide-y divide-gray-100 font-mono text-xs"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <div class="grid gap-4 md:grid-cols-2">
+              <section class="{{ card }}">
+                <div class="{{ card_head }}"><h2 class="{{ card_title }}">腕部视觉对齐</h2></div>
+                <div class="space-y-2 p-4 text-sm text-gray-700">
+                  <p id="align-text">对准之后显示：瓶子左边缘离定指多远、还要左移多少。</p>
+                  <img id="align-image" class="hidden w-full rounded-lg border border-gray-200" alt="对齐图" />
+                </div>
+              </section>
+              <section class="{{ card }}">
+                <div class="{{ card_head }}"><h2 class="{{ card_title }}">人的 Demo 视频参考</h2><span class="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-700">在 xlerobot-demo 里处理</span></div>
+                <div class="space-y-2 p-4 text-sm text-gray-700">
+                  <p>示范视频 → 接触关键帧 → 接触区域（DenseMatcher）/ 接近方向（HOGraspFlow），在 xlerobot-demo 项目里生成「当前场景的 prior 文件」，再在右边选算法时填进来。</p>
+                  <p class="text-xs text-gray-500">示范只改变候选的先后，不会生成或挪动抓取；人的示范不会绕过机器人的约束。说明见 xlerobot-demo/doc/research.md。</p>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <section class="{{ card }}">
+              <div class="{{ card_head }}"><h2 class="{{ card_title }}">GraspGenX 抓取候选</h2><span id="plan-arm" class="text-xs text-gray-500"></span></div>
+              <div class="space-y-3 p-4">
+                <ol id="funnel" class="space-y-1.5 text-sm"></ol>
+                <div id="selected" class="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">还没有选中的抓取</div>
+                <div id="rejections" class="hidden rounded-lg bg-orange-50 p-3 text-xs text-orange-800"></div>
+              </div>
+            </section>
+
+            <section class="{{ card }}">
+              <div class="{{ card_head }}"><h2 class="{{ card_title }}">排序算法（下一次规划用）</h2><span id="algo-state" class="text-xs text-gray-500"></span></div>
+              <form id="algo-form" class="space-y-3 p-4 text-sm">
+                <label class="block"><span class="text-xs font-semibold text-gray-500">算法</span>
+                  <select id="algo-mode" class="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"></select></label>
+                <label class="block"><span class="text-xs font-semibold text-gray-500">任务描述（GraspMolmo 用，英文）</span>
+                  <input id="algo-task" type="text" class="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" /></label>
+                <label id="dense-row" class="hidden"><span class="text-xs font-semibold text-gray-500">DenseMatcher prior 文件（当前场景配准后的）</span>
+                  <input id="algo-dense" type="text" placeholder="/home/…/xlerobot-demo/…/prior.json" class="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs" /></label>
+                <label id="hog-row" class="hidden"><span class="text-xs font-semibold text-gray-500">HOGraspFlow prior 文件</span>
+                  <input id="algo-hog" type="text" class="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs" /></label>
+                <button id="algo-apply" type="submit" class="{{ primary }} w-full">应用到下一次规划</button>
+                <p class="text-xs text-gray-500">只能在「检测并规划」之前设置；非基线算法在单独的环境里推理，第一次可能要几分钟。</p>
+              </form>
+            </section>
+          </div>
+        </div>
+{% endblock %}

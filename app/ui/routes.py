@@ -69,13 +69,8 @@ def create_ui() -> APIRouter:
 
     @router.get("/planning")
     def planning(request: Request):
-        page = templates.TemplateResponse(request, "placeholder.html", {
-            "page": "planning", "title": "抓取规划", "subtitle": "研究抓哪里最合适：候选点位、接近路径、腕部对齐，以及从人的 Demo 视频学抓取位置。",
-            "items": ["GraspGenX 候选列表：分数、是否可达、碰撞风险、离示范点的距离",
-                      "选中候选的点位和接近路径预览（只规划不运动）",
-                      "腕部对齐的偏差、建议修正和历史",
-                      "人的 Demo 视频：导入、关键帧、接触点，和候选对照",
-                      "评估记录：每次真机抓取的候选、结果和残余误差"]})
+        """The research page: the last plan's candidates, their re-ranking, the algorithm for the next plan."""
+        page = templates.TemplateResponse(request, "planning.html", {"page": "planning"})
         return page
 
     @router.get("/calibration")

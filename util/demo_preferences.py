@@ -7,6 +7,10 @@ import tempfile
 import numpy as np
 
 
+# Baseline is GraspGenX's own order; the others re-rank its SO-101 candidates (doc in xlerobot-demo/doc/research.md).
+MODES = ('baseline', 'molmo', 'densematcher', 'hog', 'molmo+densematcher', 'molmo+densematcher+hog')
+
+
 class DemoPreferences:
     def __init__(self):
         root = Path(__file__).resolve().parents[2] / 'xlerobot-demo'
@@ -18,8 +22,7 @@ class DemoPreferences:
         self.directory = None
 
     def configure(self, options):
-        modes = ('baseline','molmo','densematcher','hog','molmo+densematcher','molmo+densematcher+hog')
-        if options['mode'] not in modes or not options['task'].strip():
+        if options['mode'] not in MODES or not options['task'].strip():
             raise ValueError('invalid algorithm mode/task')
         for token in ('densematcher','hog'):
             if token in options['mode'].split('+'):

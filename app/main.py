@@ -36,6 +36,7 @@ from loguru import logger
 from app.api.calibration_api import create_calibration_api
 from app.api.grasp_execution_api import create_grasp_execution_api
 from app.api.grasp_generation_api import create_grasp_generation_api
+from app.api.planning_api import create_planning_api
 from app.api.real_grasp_api import create_real_grasp_api
 from app.api.robot_operation_api import create_robot_operation_api
 from app.api.robot_proxy_api import create_robot_proxy_api
@@ -55,6 +56,7 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     app.include_router(create_robot_proxy_api())
     app.include_router(create_system_api(supervisor))
     app.include_router(create_calibration_api())
+    app.include_router(create_planning_api())
     for router in (create_robot_operation_api(), create_grasp_generation_api(), create_grasp_execution_api(), create_real_grasp_api()):
         app.include_router(router, prefix=GRASP_PREFIX)
     mount_ui_static(app)

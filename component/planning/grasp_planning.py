@@ -61,6 +61,8 @@ class RealGraspPlanning:
         self.selection = GraspSelection()
         from util.demo_preferences import DemoPreferences
         self.preferences = DemoPreferences()
+        # The last plan's candidate funnel (plan()).
+        self.stats: dict = {}
         self.urdf = yourdfpy.URDF.load(str(PathConfig.URDF_PATH), load_meshes=False, build_scene_graph=True)
         self.planner: MotionPlanHelper | None = None
         # Every arm motion is checked against the desk (component/real_robot/desk_guard.py); its plane is measured here.
@@ -207,6 +209,9 @@ class RealGraspPlanning:
         level = self.selection.level(self.reachability.filter(seated, start))
         ordered = [grasp for grasp in level if self.roll_ok(np.array([grasp.joints]))]
         logger.info("候选 {} → 侧抓中段 {} → {}能水平够到 {} → 腕部转动在真机范围内 {}", len(candidates), len(seated), arm.label, len(level), len(ordered))
+        # For the planning page: how the candidates thinned out, and the ones left (before the preference order).
+        self.stats = {"arm": arm.side, "candidates": len(candidates), "seated": len(seated), "level": len(level), "roll_ok": len(ordered),
+                      "kept": [{"candidate": grasp.index, "score": round(float(grasp.score), 3)} for grasp in ordered[:20]]}
         import json
         gripper = json.loads((GripperConfig.DIR / "config.json").read_text())
         ordered = self.preferences.order(ordered, gripper)
