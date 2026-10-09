@@ -15,7 +15,7 @@ from typing import Callable
 import numpy as np
 from loguru import logger
 
-from component.grasp_execution.reachability import ReachableGrasp
+from component.planning.reachability import ReachableGrasp
 from config.settings import GripperConfig, MotionConfig, use_utf8_output
 from util.motion_plan_helper import JointTrajectory, MotionPlanHelper
 from util.moveit_helper import MoveItHelper
@@ -81,7 +81,7 @@ class GraspMotion:
 
 def demo_motion() -> None:
     """Needs the bringup launch: plans and executes on the best reachable pudding-box grasp (mock hardware)."""
-    from component.grasp_execution.reachability import GraspReachability
+    from component.planning.reachability import GraspReachability
     from component.grasp_generation.service import GraspGeneration
 
     generation = GraspGeneration()

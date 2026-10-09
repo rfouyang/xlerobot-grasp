@@ -16,7 +16,7 @@ import threading
 import numpy as np
 from loguru import logger
 
-from component.real_robot.arm import Arm
+from component.planning.arm import Arm
 from config.settings import DeskGuardConfig, use_utf8_output
 
 # Every link of an arm the desk could meet, in the right arm's names (Arm.link gives the other arm's).
@@ -31,7 +31,7 @@ class DeskGuard:
     few cm off. Its own URDF copy and mesh samples; one check at a time."""
 
     def __init__(self, **kwargs) -> None:
-        from component.real_robot.calibration_check import CalibrationCheck
+        from component.calibration.check import CalibrationCheck
 
         check = CalibrationCheck(None, samples=kwargs.get("samples", DeskGuardConfig.SAMPLES))
         self.urdf, self.mapping, self.points = check.urdf, check.mapping, check.points
@@ -97,7 +97,7 @@ class DeskGuard:
 
 def demo_desk_guard() -> None:
     """Offline: the clearance of the left arm at the 15 board-calibration poses recorded on 2026-10-09 (one hit)."""
-    from component.real_robot.arm import LEFT
+    from component.planning.arm import LEFT
 
     guard = DeskGuard()
     session = BASE_DIR / "data" / "calibration" / "left_board_20261009"
