@@ -21,8 +21,11 @@ from component.task.bridge import ARM_JOINTS, RealRobotBridge
 from component.calibration.check import CalibrationCheck, head_camera_pose
 from component.planning.grasp_planning import RealGraspPlanning, RealScene
 from component.task.wrist_alignment import WristAlignment
-from config.settings import (AlertConfig, ArmConfig, GripperConfig, MotionConfig, MoveRightConfig, PathConfig, PerceptionConfig, ReachMapConfig, RealPlanningConfig, RealRobotConfig, SelectionConfig,
-                             WristAlignConfig, use_utf8_output)
+from config.perception import PerceptionConfig
+from config.planning import ArmConfig, GripperConfig, MotionConfig, ReachMapConfig, RealPlanningConfig, SelectionConfig
+from config.settings import PathConfig, use_utf8_output
+from config.task import MoveRightConfig, RealRobotConfig, WristAlignConfig
+from config.voice import AlertConfig
 from util.joint_mapping_helper import JointMappingHelper
 from util.motion_plan_helper import JointTrajectory
 from util.moveit_helper import MoveItHelper

@@ -16,7 +16,8 @@ import numpy as np
 from loguru import logger
 
 from component.planning.reachability import ReachableGrasp
-from config.settings import GripperConfig, MotionConfig, use_utf8_output
+from config.planning import GripperConfig, MotionConfig
+from config.settings import use_utf8_output
 from util.motion_plan_helper import JointTrajectory, MotionPlanHelper
 from util.moveit_helper import MoveItHelper
 

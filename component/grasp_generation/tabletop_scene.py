@@ -16,7 +16,9 @@ import trimesh
 import trimesh.transformations as tra
 from loguru import logger
 
-from config.settings import GraspConfig, SceneConfig, use_utf8_output
+from config.planning import GraspConfig, SceneConfig
+
+from config.settings import use_utf8_output
 
 
 @dataclass

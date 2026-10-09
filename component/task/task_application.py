@@ -20,7 +20,8 @@ from component.task.execution import RealGraspExecution
 from component.simulation.robot_operation import RobotOperation
 from component.simulation.robot_simulation import RobotSimulation
 from component.simulation.scene_display import SceneDisplay
-from config.settings import SimConfig, use_utf8_output
+from config.settings import use_utf8_output
+from config.simulation import SimConfig
 from util.moveit_helper import MoveItHelper
 from util.teleop_helper import TeleopHelper
 

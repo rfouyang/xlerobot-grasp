@@ -16,7 +16,11 @@ import httpx
 import numpy as np
 from loguru import logger
 
-from config.settings import HeadCameraConfig, RealRobotConfig, use_utf8_output
+from config.perception import HeadCameraConfig
+
+from config.settings import use_utf8_output
+
+from config.task import RealRobotConfig
 
 
 class TeleopHelper:

@@ -18,7 +18,8 @@ import numpy as np
 from loguru import logger
 
 from component.grasp_generation.tabletop_scene import PlacedObject, TabletopScene
-from config.settings import SimConfig, ViewerConfig, use_utf8_output
+from config.settings import use_utf8_output
+from config.simulation import SimConfig, ViewerConfig
 from util.physics_sim_helper import PhysicsSimHelper
 
 

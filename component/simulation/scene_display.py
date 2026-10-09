@@ -18,7 +18,11 @@ import numpy as np
 import trimesh
 from loguru import logger
 
-from config.settings import GripperConfig, PathConfig, ViewerConfig, use_utf8_output
+from config.planning import GripperConfig
+
+from config.settings import PathConfig, use_utf8_output
+
+from config.simulation import ViewerConfig
 from util.scene_view_helper import SceneViewHelper
 
 

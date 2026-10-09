@@ -13,7 +13,9 @@ import numpy as np
 import trimesh
 from loguru import logger
 
-from config.settings import GraspConfig, PathConfig, use_utf8_output
+from config.planning import GraspConfig
+
+from config.settings import PathConfig, use_utf8_output
 from graspgenx.grasp_server import GraspGenXSampler
 from graspgenx.utils.checkpoint_io import load_model_cfg
 from graspgenx.x_grippers import make_sweep_volume_gripper_info

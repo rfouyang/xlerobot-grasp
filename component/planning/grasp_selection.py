@@ -18,7 +18,8 @@ from loguru import logger
 from component.planning.reachability import ReachableGrasp
 from component.grasp_generation.grasp_prediction import GraspCandidate
 from component.grasp_generation.tabletop_scene import PlacedObject
-from config.settings import GripperConfig, SelectionConfig, use_utf8_output
+from config.planning import GripperConfig, SelectionConfig
+from config.settings import use_utf8_output
 
 
 class GraspSelection:

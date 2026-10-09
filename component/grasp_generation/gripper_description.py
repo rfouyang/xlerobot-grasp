@@ -19,7 +19,9 @@ import trimesh.transformations as tra
 import yourdfpy
 from loguru import logger
 
-from config.settings import GripperConfig, PathConfig, use_utf8_output
+from config.planning import GripperConfig
+
+from config.settings import PathConfig, use_utf8_output
 
 
 class GripperDescription:

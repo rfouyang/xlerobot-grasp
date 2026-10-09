@@ -16,7 +16,9 @@ from uuid import uuid4
 import httpx
 from loguru import logger
 
-from config.settings import AlertConfig, ByteplusTtsConfig, use_utf8_output
+from config.settings import use_utf8_output
+
+from config.voice import AlertConfig, ByteplusTtsConfig
 
 
 class ByteplusTtsHelper:

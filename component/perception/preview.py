@@ -17,7 +17,11 @@ import cv2
 import numpy as np
 from loguru import logger
 
-from config.settings import PerceptionConfig, PlaceConfig, use_utf8_output
+from config.perception import PerceptionConfig
+
+from config.settings import use_utf8_output
+
+from config.task import PlaceConfig
 from util.depth_refine_helper import DepthRefineHelper
 from util.teleop_helper import TeleopHelper
 

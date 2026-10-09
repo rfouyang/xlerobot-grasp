@@ -13,7 +13,9 @@ import math
 
 from loguru import logger
 
-from config.settings import JointMappingConfig, use_utf8_output
+from config.robot import JointMappingConfig
+
+from config.settings import use_utf8_output
 
 ARMS = {"right_arm": "", "left_arm": "_2"}
 

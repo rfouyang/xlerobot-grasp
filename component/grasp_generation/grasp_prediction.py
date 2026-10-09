@@ -17,7 +17,8 @@ from loguru import logger
 
 from component.grasp_generation.gripper_description import GripperDescription
 from component.grasp_generation.tabletop_scene import TabletopScene
-from config.settings import GripperConfig, use_utf8_output
+from config.planning import GripperConfig
+from config.settings import use_utf8_output
 from util.grasp_helper import GraspHelper
 
 

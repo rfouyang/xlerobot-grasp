@@ -10,7 +10,8 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 # First: it sets MUJOCO_GL / PYOPENGL_PLATFORM, which mujoco reads when imported.
-from config.settings import PathConfig, SimConfig, use_utf8_output
+from config.settings import PathConfig, use_utf8_output
+from config.simulation import SimConfig
 
 import xml.etree.ElementTree as ET
 

@@ -16,7 +16,8 @@ from fastapi.testclient import TestClient
 from loguru import logger
 
 from app.context import grasp_context
-from config.settings import SimConfig, use_utf8_output
+from config.settings import use_utf8_output
+from config.simulation import SimConfig
 
 UI_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=UI_DIR / "templates")

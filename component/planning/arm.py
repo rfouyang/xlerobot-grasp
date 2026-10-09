@@ -11,7 +11,9 @@ if str(BASE_DIR) not in sys.path:
 
 from dataclasses import dataclass
 
-from config.settings import ArmConfig, use_utf8_output
+from config.planning import ArmConfig
+
+from config.settings import use_utf8_output
 
 # The right arm's URDF names; the left arm's carry the suffix "_2".
 BASE_JOINTS = ("Rotation", "Pitch", "Elbow", "Wrist_Pitch", "Wrist_Roll")
@@ -109,7 +111,7 @@ class Arm:
     @property
     def ignore_pairs(self) -> tuple[tuple[str, str], ...]:
         """Self-collision pairs ignored for this arm: the shared ones and its own (ArmConfig), in its link names."""
-        from config.settings import RealPlanningConfig
+        from config.planning import RealPlanningConfig
 
         pairs = tuple((self.link(a), self.link(b)) for a, b in (*RealPlanningConfig.IGNORE_PAIRS, *ArmConfig.EXTRA_IGNORE_PAIRS[self.side]))
         return pairs

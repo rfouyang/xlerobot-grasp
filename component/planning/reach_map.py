@@ -22,7 +22,8 @@ from scipy.optimize import least_squares
 
 from component.planning.arm import RIGHT, Arm
 from component.calibration.check import head_camera_pose
-from config.settings import MotionConfig, PathConfig, ReachMapConfig, RealPlanningConfig, use_utf8_output
+from config.planning import MotionConfig, ReachMapConfig, RealPlanningConfig
+from config.settings import PathConfig, use_utf8_output
 from util.joint_mapping_helper import JointMappingHelper
 
 

@@ -18,7 +18,9 @@ import trimesh.transformations as tra
 import yaml
 from loguru import logger
 
-from config.settings import MotionConfig, PathConfig, use_utf8_output
+from config.planning import MotionConfig
+
+from config.settings import PathConfig, use_utf8_output
 from curobo.motion_planner import MotionPlanner, MotionPlannerCfg
 from curobo.robot_builder import RobotBuilder
 from curobo.scene import Cuboid, Scene

@@ -3,6 +3,8 @@ cameras). Moved from xlerobot-teleop unchanged; config/settings.py holds the pat
 
 from __future__ import annotations
 
+import json
+
 from config.settings import BASE_DIR
 
 
@@ -124,3 +126,33 @@ class CameraStreamConfig:
     # reconnected after this many failed reads in a row (~3 s at STREAM_HZ).
     FROZEN_S = 1.0
     RECONNECT_MISSES = 45
+
+
+class JointMappingConfig:
+    """Real joint (lerobot degrees, xlerobot_smallcircle's calibration) <-> URDF joint: real = SIGN * urdf_deg + OFFSET.
+
+    Signs measured on the robot (2026-10-05): shoulder_lift, wrist_roll and the head pan turn the other way from
+    xlerobot.urdf. Offsets: shoulder_lift / elbow from XLeRobot's own IK convention (lift = 90 - Pitch,
+    elbow = Elbow - 90), checked against the URDF geometry within 0.2°; the head's from its calibration (the pose
+    set looking straight ahead, level, reads pan -0.4°, tilt 16.3°); wrist_roll's from the jaws: at real roll ~0 both
+    open sideways with the moving finger on the robot's right (the user, 2026-10-05), where the URDF's open up and down
+    at roll 0 and put the moving finger on the right at +90°; the rest 0 until checked."""
+
+    # URDF joint -> (real motor, sign, offset deg). The left arm's joints end in _2 and use the left motors.
+    ARM = {
+        "Rotation": ("shoulder_pan", 1, 0.0),
+        "Pitch": ("shoulder_lift", -1, 90.0),
+        "Elbow": ("elbow_flex", 1, -90.0),
+        "Wrist_Pitch": ("wrist_flex", 1, 0.0),
+        "Wrist_Roll": ("wrist_roll", -1, 90.0),
+    }
+    HEAD = {
+        "head_pan_joint": ("head_motor_1", -1, -0.4),
+        "head_tilt_joint": ("head_motor_2", 1, 16.3),
+    }
+    # Gripper 0 (closed) .. 100 (open) <-> Jaw 0 .. JAW_OPEN_RAD.
+    JAW_OPEN_RAD = 1.7
+    # Per-arm corrections on top of ARM (deg, by motor): true URDF angle = mapped angle + correction. The left arm's
+    # from its own calibration (2026-10-09); the right arm's mapping is the reference the head camera was calibrated on.
+    ARM_CORRECTION_DEG = {"right_arm": {},
+                          "left_arm": json.loads((BASE_DIR / "config" / "calibration" / "left_arm_20261009.json").read_text())["correction_deg"]}

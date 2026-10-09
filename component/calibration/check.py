@@ -16,7 +16,9 @@ import trimesh
 import yourdfpy
 from loguru import logger
 
-from config.settings import HeadCameraConfig, PathConfig, use_utf8_output
+from config.perception import HeadCameraConfig
+
+from config.settings import PathConfig, use_utf8_output
 from util.joint_mapping_helper import JointMappingHelper
 from util.teleop_helper import TeleopHelper
 

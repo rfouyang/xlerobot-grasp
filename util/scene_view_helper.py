@@ -20,7 +20,9 @@ import yourdfpy
 from loguru import logger
 from viser.extras import ViserUrdf
 
-from config.settings import PathConfig, ViewerConfig, use_utf8_output
+from config.settings import PathConfig, use_utf8_output
+
+from config.simulation import ViewerConfig
 
 
 class SceneViewHelper:

@@ -16,7 +16,8 @@ import trimesh.transformations as tra
 from loguru import logger
 
 from component.grasp_generation.grasp_prediction import GraspCandidate
-from config.settings import MotionConfig, use_utf8_output
+from config.planning import MotionConfig
+from config.settings import use_utf8_output
 from util.motion_plan_helper import MotionPlanHelper
 
 

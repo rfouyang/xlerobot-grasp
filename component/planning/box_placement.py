@@ -18,7 +18,9 @@ from loguru import logger
 from component.planning.reachability import ReachableGrasp
 from component.calibration.check import head_camera_pose
 from component.planning.grasp_planning import RIGHT_ARM, RealGraspPlanning, RealScene
-from config.settings import MotionConfig, PlaceConfig, RealPlanningConfig, SelectionConfig, use_utf8_output
+from config.planning import MotionConfig, RealPlanningConfig, SelectionConfig
+from config.settings import use_utf8_output
+from config.task import PlaceConfig
 from util.motion_plan_helper import JointTrajectory
 
 

@@ -17,7 +17,8 @@ import numpy as np
 from loguru import logger
 
 from component.planning.arm import Arm
-from config.settings import DeskGuardConfig, use_utf8_output
+from config.planning import DeskGuardConfig
+from config.settings import use_utf8_output
 
 # Every link of an arm the desk could meet, in the right arm's names (Arm.link gives the other arm's).
 LINKS = ("Lower_Arm", "Wrist_Pitch_Roll", "Fixed_Jaw", "Moving_Jaw", "Right_Arm_Camera", "Right_Camera_Plate")

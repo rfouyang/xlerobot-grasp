@@ -16,7 +16,9 @@ import numpy as np
 import torch
 from loguru import logger
 
-from config.settings import HeadCameraConfig, PerceptionConfig, use_utf8_output
+from config.perception import HeadCameraConfig, PerceptionConfig
+
+from config.settings import use_utf8_output
 
 
 class StereoDepthHelper:

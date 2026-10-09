@@ -13,7 +13,9 @@ import numpy as np
 import trimesh
 from loguru import logger
 
-from config.settings import SceneConfig, use_utf8_output
+from config.planning import SceneConfig
+
+from config.settings import use_utf8_output
 
 # (radius, height) outlines in metres, bottom centre to top centre.
 PROFILES = {

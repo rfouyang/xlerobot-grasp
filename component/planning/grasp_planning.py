@@ -27,7 +27,8 @@ from component.grasp_generation.tabletop_scene import PlacedObject, TabletopScen
 from component.perception.service import Perception, Target
 from component.planning.arm import RIGHT, Arm
 from component.calibration.check import CalibrationCheck, head_camera_pose
-from config.settings import MotionConfig, PathConfig, RealPlanningConfig, use_utf8_output
+from config.planning import MotionConfig, RealPlanningConfig
+from config.settings import PathConfig, use_utf8_output
 from util.joint_mapping_helper import JointMappingHelper
 from util.motion_plan_helper import JointTrajectory, MotionPlanHelper
 from util.teleop_helper import TeleopHelper

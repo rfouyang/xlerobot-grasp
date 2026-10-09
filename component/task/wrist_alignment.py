@@ -15,7 +15,11 @@ import cv2
 import numpy as np
 from loguru import logger
 
-from config.settings import PathConfig, PerceptionConfig, WristAlignConfig, use_utf8_output
+from config.perception import PerceptionConfig
+
+from config.settings import PathConfig, use_utf8_output
+
+from config.task import WristAlignConfig
 from util.detection_helper import DetectionHelper
 from util.teleop_helper import TeleopHelper
 

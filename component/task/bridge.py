@@ -15,13 +15,15 @@ import time
 
 from loguru import logger
 
-from config.settings import RealRobotConfig, use_utf8_output
+from config.settings import use_utf8_output
+
+from config.task import RealRobotConfig
 from util.joint_mapping_helper import JointMappingHelper
 from util.moveit_helper import MoveItHelper
 from util.teleop_helper import TeleopHelper
 
 from component.planning.arm import RIGHT
-from config.settings import DeskGuardConfig
+from config.planning import DeskGuardConfig
 
 ARM_JOINTS = ("Rotation", "Pitch", "Elbow", "Wrist_Pitch", "Wrist_Roll", "Jaw")
 
