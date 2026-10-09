@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{# 相机标定 (design: 06, and 深度对比 moved in as a tab): the board seen live by the three cameras and the current
+   results; the depth comparison. #}
+{% block title %}相机标定{% endblock %}
+{% block subtitle %}桌面 ChArUco 板：头部和左右腕相机的内参、手眼和关节偏置；深度对比看头部深度的质量。{% endblock %}
+{% block scripts %}<script src="/static/ui/calibration.js?v={{ asset_version('calibration.js') }}" defer></script>{% endblock %}
+{% set tab = "rounded-lg px-4 py-2 text-sm font-medium" %}
+{% block content %}
+        <div class="flex gap-2" role="tablist">
+          <button id="tab-charuco" type="button" class="{{ tab }} bg-blue-50 text-blue-600" data-tab="charuco">ChArUco 标定</button>
+          <button id="tab-depth" type="button" class="{{ tab }} text-gray-600 hover:bg-gray-100" data-tab="depth">深度对比</button>
+        </div>
+
+        <!-- ChArUco -->
+        <div id="panel-charuco" class="space-y-4">
+          <section class="{{ card }} px-4 py-3 text-sm text-gray-700">
+            <p><span class="font-semibold">流程：</span>1 标定板设置 → 2 检测与采样 → 3 计算标定 → 4 验证与保存。
+              <span id="board-text" class="text-gray-500"></span></p>
+          </section>
+          <div class="grid gap-3 md:grid-cols-3">
+            {% for camera, label in [("head", "头部 RGB"), ("left_wrist", "左腕相机"), ("right_wrist", "右腕相机")] %}
+            <figure class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
+              <div class="relative aspect-[4/3] bg-gray-900"><img id="detect-{{ camera }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></div>
+              <figcaption class="flex items-center justify-between px-3 py-2 text-xs">
+                <span class="font-semibold text-gray-800">{{ label }} / 角点</span><span id="count-{{ camera }}" class="text-gray-500">—</span>
+              </figcaption>
+            </figure>
+            {% endfor %}
+          </div>
+          <section class="{{ card }}">
+            <div class="{{ card_head }}"><h2 class="{{ card_title }}">当前使用的标定结果</h2><span class="text-xs text-gray-500">config/calibration/，新的在前</span></div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50"><tr>
+                  <th class="px-4 py-2 text-start text-xs font-medium text-gray-500">相机</th>
+                  <th class="px-4 py-2 text-start text-xs font-medium text-gray-500">内容</th>
+                  <th class="px-4 py-2 text-start text-xs font-medium text-gray-500">关键数字</th>
+                  <th class="px-4 py-2 text-start text-xs font-medium text-gray-500">文件 / 时间</th>
+                </tr></thead>
+                <tbody id="results" class="divide-y divide-gray-100"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="{{ card }} px-4 py-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" class="{{ button }}" disabled>采集当前有效帧</button>
+              <button type="button" class="{{ primary }}" disabled>计算标定</button>
+              <button type="button" class="{{ button }}" disabled>验证结果并保存版本</button>
+              <span class="text-xs text-gray-500">采样、计算和验证下一步接进页面；现在仍用 output/scratch_20261006 里的标定脚本（left_board_*.py、board_in_base.py、ffs_scale_calib.py）。</span>
+            </div>
+          </section>
+        </div>
+
+        <!-- Depth comparison -->
+        <div id="panel-depth" class="hidden space-y-4">
+          <div class="grid gap-3 md:grid-cols-3">
+            {% for kind, label in [("rgb", "头部 RGB"), ("raw", "头部原始深度（传感器）"), ("refined", "头部处理后深度（FFS）")] %}
+            <figure class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
+              <div class="relative aspect-[4/3] bg-gray-900"><img id="compare-{{ kind }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></div>
+              <figcaption class="px-3 py-2 text-xs font-semibold text-gray-800">{{ label }}</figcaption>
+            </figure>
+            {% endfor %}
+          </div>
+          <section class="{{ card }} space-y-2 px-4 py-3 text-sm text-gray-700">
+            <h2 class="{{ card_title }}">对比显示</h2>
+            <p>两张深度用同一色标（蓝近红远，0.2–1.5 m），黑色：没有有效深度。FFS 深度乘了标定的尺度（ChArUco 板，见上一页的「FFS 深度尺度」）。</p>
+            <p id="compare-time" class="text-xs text-gray-500"></p>
+            <div class="flex gap-2">
+              <button id="btn-freeze" type="button" class="{{ button }}">冻结当前帧</button>
+              <button id="btn-export" type="button" class="{{ button }}">导出对比图</button>
+            </div>
+          </section>
+        </div>
+{% endblock %}

@@ -80,11 +80,8 @@ def create_ui() -> APIRouter:
 
     @router.get("/calibration")
     def calibration(request: Request):
-        page = templates.TemplateResponse(request, "placeholder.html", {
-            "page": "calibration", "title": "相机标定", "subtitle": "桌面 ChArUco 板：头部和左右腕相机的内参、手眼和关节偏置；还有深度对比。",
-            "items": ["ChArUco 标定：采样（覆盖与有效帧）→ 计算 → 独立验证 → 按版本保存和回退",
-                      "深度对比：头部原始深度 / FFS 深度，同一色标、同步缩放、冻结当前帧、导出对比图",
-                      "相机安装座模型随腕部标定自动更新（URDF 和 cuRobo）"]})
+        """The board seen live by the three cameras, the current results, and the depth comparison."""
+        page = templates.TemplateResponse(request, "calibration.html", {"page": "calibration"})
         return page
 
     @router.get("/settings")

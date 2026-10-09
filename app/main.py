@@ -33,6 +33,7 @@ import uvicorn
 from fastapi import FastAPI
 from loguru import logger
 
+from app.api.calibration_api import create_calibration_api
 from app.api.grasp_execution_api import create_grasp_execution_api
 from app.api.grasp_generation_api import create_grasp_generation_api
 from app.api.real_grasp_api import create_real_grasp_api
@@ -53,6 +54,7 @@ def create_app(supervisor: Supervisor) -> FastAPI:
     app.include_router(create_ui())
     app.include_router(create_robot_proxy_api())
     app.include_router(create_system_api(supervisor))
+    app.include_router(create_calibration_api())
     for router in (create_robot_operation_api(), create_grasp_generation_api(), create_grasp_execution_api(), create_real_grasp_api()):
         app.include_router(router, prefix=GRASP_PREFIX)
     mount_ui_static(app)
