@@ -146,7 +146,6 @@ class CalibrationCheck:
         # The head as it was for this image.
         joints["head"] = {"head_motor_1": float(frame["head_joints"][0]), "head_motor_2": float(frame["head_joints"][1])}
         image, pixels = self.project(joints, frame)
-        depth = frame["depth"] * frame["depth_scale"]
         for name, (count, model, measured) in self.depth_errors(pixels, frame).items():
             summary = "不在画面里" if count == 0 else "无深度" if model is None else (
                 f"{count} 点在画面里，模型 {model:.3f} m / 实测 {measured:.3f} m，差中位 {(measured - model) * 100:+.1f} cm")
