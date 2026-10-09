@@ -69,7 +69,13 @@ class RobotLink:
         self.configure([part for part in RobotConfig.PARTS if part not in powered])
         for part in powered:
             self.adopt(part)
+        # Which vhci port is which wrist (component/robot/devices.py, config/devices.json).
+        from component.robot.devices import mapping, path_of
+
+        ports = mapping()
         for name, camera in robot.cameras.items():
+            if name in ("left_wrist", "right_wrist"):
+                camera.index_or_path = camera.config.index_or_path = path_of(ports[name])
             if name == "head":
                 camera.fps = camera.config.fps = CameraStreamConfig.HEAD_FPS
                 if CameraStreamConfig.HEAD_INFRARED:

@@ -11,6 +11,29 @@
 
         <div id="stages" class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"></div>
 
+        <!-- 设备自动匹配 (design: 07): the two identical wrist cameras by their USB port; preview, swap, confirm. -->
+        <section class="{{ card }}">
+          <div class="{{ card_head }}">
+            <h2 class="{{ card_title }}">设备匹配：左右腕相机</h2>
+            <span id="match-state" class="text-xs text-gray-500"></span>
+          </div>
+          <div class="space-y-3 p-4 text-sm text-gray-700">
+            <p>两个腕部相机型号相同、没有序列号，只能按 USB 口区分（跟挂载顺序走）。用键盘控制<strong>张开左手夹爪</strong>，看下面哪个画面里的夹爪在动：它应该在「左腕」那一格。不对就交换。</p>
+            <div class="grid gap-3 sm:grid-cols-2">
+              {% for role, label in [("left_wrist", "左腕"), ("right_wrist", "右腕")] %}
+              <figure class="overflow-hidden rounded-xl border border-gray-200">
+                <div class="relative aspect-[3/4] max-h-80 bg-gray-900 sm:aspect-[4/3]"><img src="/robot-api/stream/{{ role }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></div>
+                <figcaption class="flex items-center justify-between px-3 py-2 text-xs"><span class="font-semibold text-gray-800">{{ label }}</span><span id="port-{{ role }}" class="font-mono text-gray-500"></span></figcaption>
+              </figure>
+              {% endfor %}
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="btn-match-confirm" type="button" class="{{ primary }}">确认映射正确</button>
+              <button id="btn-match-swap" type="button" class="{{ button }}">交换左右腕（会重启机器人进程）</button>
+            </div>
+          </div>
+        </section>
+
         <section class="{{ card }}">
           <div class="{{ card_head }}">
             <h2 class="{{ card_title }}">自检与恢复</h2>

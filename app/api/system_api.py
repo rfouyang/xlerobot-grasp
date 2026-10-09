@@ -39,6 +39,31 @@ def create_system_api(supervisor: Supervisor) -> APIRouter:
         response = {"ok": supervisor.restart_robot()}
         return response
 
+    @router.get("/api/system/devices")
+    def devices():
+        from component.robot.devices import status
+
+        response = status()
+        return response
+
+    @router.post("/api/system/devices/swap")
+    def devices_swap():
+        """Left and right wrist swapped, then the robot process again so the cameras open by the new roles."""
+        from component.robot.devices import status, swap
+
+        swap()
+        restarted = supervisor.restart_robot()
+        response = {"ok": restarted, **status()}
+        return response
+
+    @router.post("/api/system/devices/confirm")
+    def devices_confirm():
+        from component.robot.devices import confirm, status
+
+        confirm()
+        response = {"ok": True, **status()}
+        return response
+
     return router
 
 

@@ -62,7 +62,29 @@ async function restartRobot() {
   check();
 }
 
+async function loadDevices(result) {
+  const data = result || await fetch("/api/system/devices").then((r) => r.json()).catch(() => null);
+  if (!data || !data.mapping) return;
+  for (const role of ["left_wrist", "right_wrist"]) {
+    const camera = data.cameras.find((item) => item.role === role);
+    document.getElementById(`port-${role}`).textContent = `口 ${data.mapping[role]}${camera ? ` · ${camera.device}` : " · 没有相机"}`;
+  }
+  const state = document.getElementById("match-state");
+  state.textContent = data.problems.length ? data.problems.join("；") : data.mapping.confirmed ? `${data.mapping.confirmed} 确认过` : "还没确认";
+  state.className = `text-xs ${data.problems.length ? "text-red-600" : data.mapping.confirmed ? "text-emerald-700" : "text-orange-600"}`;
+}
+
 App.ready.then(() => {
+  document.getElementById("btn-match-confirm").addEventListener("click", async () => { loadDevices(await post("/api/system/devices/confirm")); check(); });
+  document.getElementById("btn-match-swap").addEventListener("click", async () => {
+    if (!confirm("交换左右腕相机：机器人进程会重启（画面断开十几秒，有力矩的部件停在原地）。继续？")) return;
+    notify("正在交换并重启机器人进程……");
+    const result = await post("/api/system/devices/swap");
+    notify(result.ok ? "已交换。再张开左手夹爪看一次：现在应该在「左腕」那一格。" : "重启机器人进程没成功，看 log/robot_stdout.log");
+    loadDevices(result);
+    check();
+  });
+  loadDevices();
   document.getElementById("btn-check").addEventListener("click", check);
   document.getElementById("btn-restart-robot").addEventListener("click", restartRobot);
   setInterval(() => { if (document.getElementById("auto-check").checked) check(); }, 10000);

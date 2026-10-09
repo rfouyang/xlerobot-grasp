@@ -166,8 +166,16 @@ class SelfCheck:
             ok = len(where) == expected
             items.append(item(role, ok, f"{len(where)}/{expected}：{'；'.join(where) or '没有'}（{hwid}）",
                               "" if ok else "在 Windows 管理员 PowerShell 里运行 launch/attach_usb.ps1；RealSense 要最后挂，失败就拔插一次"))
-        if found.get("0c45:64ab") and len(found["0c45:64ab"]) == 2:
-            items.append(item("左右腕相机区分", None, "两个腕部相机型号相同、没有序列号：按 USB 口区分，换口后要在画面里确认左右", ""))
+        from component.robot.devices import status as wrist_status
+
+        wrists = wrist_status()
+        current = wrists["mapping"]
+        if wrists["problems"]:
+            items.append(item("左右腕相机匹配", False, "；".join(wrists["problems"]), "在下面「设备匹配」里看画面重新匹配"))
+        else:
+            items.append(item("左右腕相机匹配", True if current.get("confirmed") else None,
+                              f"左腕 = 口 {current['left_wrist']}，右腕 = 口 {current['right_wrist']}" +
+                              (f"（{current['confirmed']} 确认过）" if current.get("confirmed") else "（还没在画面里确认过：张开一只夹爪看哪个画面在动）"), ""))
         return items
 
 

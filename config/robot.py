@@ -156,3 +156,16 @@ class JointMappingConfig:
     # from its own calibration (2026-10-09); the right arm's mapping is the reference the head camera was calibrated on.
     ARM_CORRECTION_DEG = {"right_arm": {},
                           "left_arm": json.loads((BASE_DIR / "config" / "calibration" / "left_arm_20261009.json").read_text())["correction_deg"]}
+
+
+class DeviceMatchConfig:
+    """The two wrist cameras (one model, no serial) by their vhci port: port 3 = left, 4 = right while the USB devices
+    are attached in launch/attach_usb.ps1's order (found by opening one gripper). config/devices.json overrides it
+    (the system settings page swaps and confirms it)."""
+
+    FILE = BASE_DIR / "config" / "devices.json"
+    DEFAULT = {"left_wrist": "0:3:1.0", "right_wrist": "0:4:1.0", "confirmed": None}
+    BY_PATH = "/dev/v4l/by-path/platform-vhci_hcd.0-usb-{port}-video-index0"
+    # The wrist cameras' V4L2 name.
+    WRIST_NAME = "DSJ-2062-309"
+
