@@ -79,7 +79,7 @@ function renderControls(status) {
   const fresh = !mine || status.next === 0 || finished || status.failed;
   if (stepMode()) start.textContent = fresh ? `单步：从头开始${PAGE.title}` : `执行下一步：${next.label}`;
   else start.textContent = fresh ? `确认并开始${PAGE.title}` : `继续：剩下 ${status.stages.length - status.next} 步`;
-  start.disabled = blocked;
+  start.disabled = blocked || !byId("confirm-card").classList.contains("hidden");
   const nextButton = byId("btn-next");
   // style, not the hidden class: the button's inline-flex would win over it.
   nextButton.style.display = !stepMode() || fresh ? "none" : "";
@@ -370,13 +370,36 @@ async function start() {
     return;
   }
   if (fresh) {
-    if (!confirm(`从头开始：${what}，最后关力矩（停在抓取位）。任何一步失败就停在原地；停止 / Esc / 空格 随时可停。开始？`)) return;
-    const result = await request(`${GRASP_API}/api/real/action`, { action: currentAction() });
-    notify(result.ok ? "" : `没有开始：${result.error}`);
+    showConfirm(what);
     return;
   }
   if (!confirm(`从「${status.stages[status.next].label}」开始自动执行剩下的 ${status.stages.length - status.next} 步，最后关力矩。开始？`)) return;
   const result = await request(`${GRASP_API}/api/real/run_all`);
+  notify(result.ok ? "" : `没有开始：${result.error}`);
+}
+
+// 任务 · 执行前确认: the object, the place, the arm, then the run; back to change it, or go.
+function showConfirm(what) {
+  const status = task.status;
+  const target = status.target || {};
+  const spot = status.place_spot;
+  const place = !PAGE.place ? "放回原处" : task.placeMode === "spot" ? (spot ? `桌面点 (${spot.xy[0].toFixed(2)}, ${spot.xy[1].toFixed(2)}) m` : "桌面点") : "盒子内部";
+  const arm = PAGE.place ? "右手（摆放只用右手）" : status.arm_override === "auto" ? `自动（离哪边肩膀近）${target.reach && target.reach.arms && target.reach.arms[0] ? ` → ${ARM_NAMES[target.reach.arms[0]]}` : ""}` : ARM_NAMES[status.arm_override];
+  const rows = [["任务", what], ["抓取物体", `${target.label || "瓶子"}${target.point ? "" : "（最近的）"}`], ["放置", place], ["手臂", arm],
+    ["方式", "一次跑完全部步骤，最后关力矩（停在抓取位）；任何一步失败就停在原地"]];
+  byId("confirm-list").innerHTML = rows.map(([key, value]) => `<div class="flex gap-2"><dt class="w-16 shrink-0 text-gray-500">${key}</dt><dd class="font-medium text-gray-800">${value}</dd></div>`).join("");
+  byId("confirm-card").classList.remove("hidden");
+  byId("btn-start").disabled = true;
+}
+
+function hideConfirm() {
+  byId("confirm-card").classList.add("hidden");
+  if (task.status) renderControls(task.status);
+}
+
+async function confirmGo() {
+  hideConfirm();
+  const result = await request(`${GRASP_API}/api/real/action`, { action: currentAction() });
   notify(result.ok ? "" : `没有开始：${result.error}`);
 }
 
@@ -424,6 +447,9 @@ App.ready.then(() => {
     if (task.status) renderControls(task.status);
   });
   byId("btn-start").addEventListener("click", start);
+  byId("btn-confirm-back").addEventListener("click", hideConfirm);
+  byId("btn-confirm-go").addEventListener("click", confirmGo);
+  byId("btn-new-task").addEventListener("click", async () => { await request(`${GRASP_API}/api/real/reset`, { action: currentAction() }); notify("新任务：选好物体后点「确认并开始」。"); });
   byId("btn-next").addEventListener("click", runStep);
   byId("btn-reset").addEventListener("click", async () => { await request(`${GRASP_API}/api/real/reset`, { action: currentAction() }); notify(""); });
   App.stateListeners.push(renderJoints);
