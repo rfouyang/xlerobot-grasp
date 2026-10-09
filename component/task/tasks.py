@@ -31,9 +31,13 @@ MOVE_RIGHT_STAGES = tuple(stage for name, label in STAGES
 PLACE_STAGES = tuple(stage for name, label in STAGES if name in ("prepare", "plan", "approach", "align", "open", "grasp", "close", "lift")
                      for stage in [(name, "检测瓶子和盒子并规划" if name == "plan" else label)]) + (
     ("carry", "送到盒子上方"), ("lower", "放进盒子"), ("release", "松开夹爪（同时左移让开定指）"), ("back_out", "抬高后退出"), ("home", "回到起始位"))
+# "Pick and place at a desk point" (the pick-place page, 桌面点): the same steps, the bottle carried over the clicked
+# spot and lowered to the height it was grasped from (as putting it back does: it never presses into the desk).
+SPOT_STAGES = tuple((name, {"plan": "检测并规划（放到桌面点）", "carry": "送到放置点上方", "lower": "放到桌面点"}.get(name, label))
+                    for name, label in PLACE_STAGES)
 # "Interactive grasp" (its own page): the grasp's steps on the object the user picked there, by a click on the head
 # image or by name; the other tasks always take the nearest bottle.
-ACTIONS = {"grasp": STAGES, "move_right": MOVE_RIGHT_STAGES, "place_in_box": PLACE_STAGES, "pick_target": STAGES}
+ACTIONS = {"grasp": STAGES, "move_right": MOVE_RIGHT_STAGES, "place_in_box": PLACE_STAGES, "place_at_spot": SPOT_STAGES, "pick_target": STAGES}
 # Motion steps: which planned segment, run forwards or backwards.
 SEGMENTS = {"approach": ("approach", 1), "grasp": ("grasp", 1), "lift": ("lift", 1),
             "place": ("lift", -1), "retreat": ("grasp", -1), "return": ("approach", -1)}

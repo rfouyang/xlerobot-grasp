@@ -25,13 +25,18 @@ class StageRequest(BaseModel):
 
 
 class ActionRequest(BaseModel):
-    action: Literal["grasp", "move_right", "place_in_box", "pick_target"]
+    action: Literal["grasp", "move_right", "place_in_box", "place_at_spot", "pick_target"]
     ignore_left: bool = False
 
 
 class ResetRequest(BaseModel):
     # The page's task: the grasp page resets to "grasp", the pick-place page to "place_in_box".
-    action: Literal["grasp", "move_right", "place_in_box", "pick_target"] = "grasp"
+    action: Literal["grasp", "move_right", "place_in_box", "place_at_spot", "pick_target"] = "pick_target"
+
+
+class PlaceSpotRequest(BaseModel):
+    # A click (u, v) on the desk in the head image; None clears the spot.
+    point: list[float] | None = None
 
 
 class ArmRequest(BaseModel):
@@ -90,7 +95,13 @@ def create_real_grasp_api() -> APIRouter:
     @router.post("/api/real/reset")
     def reset(request: ResetRequest | None = None):
         """No body: back to the grasp."""
-        response = grasp_context.real_reset(request.action if request else "grasp")
+        response = grasp_context.real_reset(request.action if request else "pick_target")
+        return response
+
+    @router.post("/api/real/place_spot")
+    def place_spot(request: PlaceSpotRequest):
+        """抓取摆放's desk point (the 桌面点 placement)."""
+        response = grasp_context.real_place_spot(request.point)
         return response
 
     @router.post("/api/real/arm")

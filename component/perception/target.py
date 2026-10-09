@@ -122,6 +122,27 @@ class TargetSelector:
         result = self.choose(prompt, point)
         return result
 
+    def desk_point(self, uv: list[float]) -> tuple[float, float] | None:
+        """A head-image pixel on the desk -> (x, y) in base_link: the camera ray through it meets the desk plane the
+        desk guard measured (tilted ~5 deg; flat at DeskGuardConfig.DEFAULT_Z before the first plan)."""
+        frame = self.teleop.rgbd()
+        status = self.teleop.status()
+        real = {part: {motor: values[0] for motor, values in motors.items()} for part, motors in status["joints"].items()}
+        real["head"] = {"head_motor_1": float(frame["head_joints"][0]), "head_motor_2": float(frame["head_joints"][1])}
+        self.planning.urdf.update_cfg(self.mapping.to_urdf(real))
+        base_from_camera = head_camera_pose(self.planning.urdf)
+        ray = base_from_camera[:3, :3] @ (np.linalg.inv(frame["K"]) @ np.array([uv[0], uv[1], 1.0]))
+        origin = base_from_camera[:3, 3]
+        guard = self.planning.guard
+        along = float(ray @ guard.normal)
+        if abs(along) < 1e-6:
+            return None
+        t = float((guard.origin - origin) @ guard.normal) / along
+        if t <= 0:
+            return None
+        point = origin + t * ray
+        return float(point[0]), float(point[1])
+
     def on_desk(self, frame: dict, mask: np.ndarray) -> tuple[float, float, float] | None:
         """Roughly where an object stands (x, y of its axis in base_link) and how tall it is, from its mask: the median of
         its seen points, pushed back by a typical radius away from the camera (only its front is seen)."""

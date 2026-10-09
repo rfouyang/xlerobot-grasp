@@ -58,7 +58,7 @@ def create_ui() -> APIRouter:
         """抓取摆放: pick it up, put it in the box."""
         page = templates.TemplateResponse(request, "task.html", {
             "page": "pick_place", "action": "place_in_box", "place": True, "title": "抓取摆放",
-            "subtitle": "抓起来，放进指定的盒子（桌面位置即将支持）。先选物体，再确认放置位置。"})
+            "subtitle": "抓起来，放进盒子，或放到在画面里点的桌面位置。先选物体，再选放置位置。"})
         return page
 
     @router.get("/interactive-grasp")

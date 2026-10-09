@@ -63,7 +63,7 @@ class GraspApplication:
         perception = self.real.planning.perception
         self.depth_preview = DepthPreview(TeleopHelper(), perception.refiner if perception.refine else None,
                                           stereo=perception.stereo if perception.source == "stereo" else None, gpu_lock=self.real.gpu_lock,
-                                          target=lambda: {**self.real.target, "mask": self.real.target_mask},
+                                          target=lambda: {**self.real.target, "mask": self.real.target_mask, "spot": self.real.place_spot},
                                           reach_overlay=lambda frame: {**{side: reach.overlay(frame) for side, reach in self.real.reaches.items()},
                                                                        "midline": self.real.midline_pixels(frame)})
         self.depth_preview.start()
@@ -174,6 +174,10 @@ class GraspApplication:
     def real_target(self, prompt: str | None, point: list[float] | None, clear: bool) -> dict:
         """The interactive grasp page's target: a click (point), a name (prompt), or clear (the default bottle)."""
         result = self.real.set_target(prompt, point, clear)
+        return result
+
+    def real_place_spot(self, uv: list[float] | None) -> dict:
+        result = self.real.set_place_spot(uv)
         return result
 
     def real_set_arm(self, side: str) -> dict:

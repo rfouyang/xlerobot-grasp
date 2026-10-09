@@ -96,10 +96,23 @@ class BoxPlacement:
         half = np.array([s1 - s0, t1 - t0]) / 2
         return centre, long_axis, half
 
-    def obstacle(self, box: OpenBox, extra_height: float) -> tuple[str, tuple, np.ndarray]:
+    @staticmethod
+    def spot(point: np.ndarray, table_z: float, radius: float) -> OpenBox:
+        """A desk point as a box with no walls: its place points are the point itself (within 4 mm, for a bottle of this
+        radius), its floor and rim the desk, so the bottle goes down to the height it was grasped from."""
+        half = PlaceConfig.WALL_M + radius + PlaceConfig.WALL_MARGIN_M + 0.004
+        box = OpenBox(centre=np.asarray(point, float), long_axis=np.array([1.0, 0.0]), half=np.array([half, half]),
+                      rim_z=table_z, floor_z=table_z, table_z=table_z)
+        return box
+
+    def obstacle(self, box: OpenBox, extra_height: float) -> tuple[str, tuple, np.ndarray] | None:
         """The box as a solid cuboid from the table to its rim, plus extra_height, cut off nearer the robot than
         OBSTACLE_MIN_X: the left arm, folded at rest and locked where it is while the right arm plans, sits over the
         box's near end, and a box around it put every right-arm state in collision (19:37)."""
+        if box.rim_z - box.table_z < 0.005:
+            # A desk spot (no walls): nothing to keep clear of but the desk itself. Its column for the carry stood
+            # around the lifted jaw when the spot was near the bottle, and nothing planned (2026-10-09).
+            return None
         height = box.rim_z - box.table_z + extra_height
         low, high = -box.half[0], box.half[0]
         if abs(box.long_axis[0]) > 1e-3:
@@ -166,7 +179,7 @@ class BoxPlacement:
             risen[2, 3] = max(above[2, 3], box.rim_z + PlaceConfig.TOOL_ABOVE_JAW_BOTTOM_M + PlaceConfig.EXIT_CLEARANCE_M)
             back = risen.copy()
             back[:2, 3] -= MotionConfig.APPROACH_DISTANCE * place[:2, 2] / max(np.linalg.norm(place[:2, 2]), 1e-6)
-            planner.set_obstacles([table_obstacle, self.obstacle(box, below_jaw + PlaceConfig.CARRY_CLEARANCE_M)])
+            planner.set_obstacles([o for o in (table_obstacle, self.obstacle(box, below_jaw + PlaceConfig.CARRY_CLEARANCE_M)) if o])
             carry = planner.plan_segment(segments["lift"].positions[-1], above, touching=False)
             if carry is None:
                 # Why: the place unreachable, or the start (the lifted arm) already in collision?
@@ -175,11 +188,11 @@ class BoxPlacement:
                 logger.info("送到盒子上方失败：放置点上方 IK {}，起点原地规划 {}", "有解" if planner.solve_ik(above, segments["lift"].positions[-1]) is not None else "无解",
                             "成功" if stay is not None else "失败（起点可能在碰撞里）")
                 continue
-            planner.set_obstacles([table_obstacle, self.obstacle(box, 0.0)])
+            planner.set_obstacles([o for o in (table_obstacle, self.obstacle(box, 0.0)) if o])
             lower = planner.plan_segment(carry.positions[-1], place, touching=False)
             rise = planner.plan_segment(lower.positions[-1], risen, touching=False) if lower is not None else None
             # Leaving, the walls count a little higher: the arm keeps clear of the rim on the way back and home.
-            planner.set_obstacles([table_obstacle, self.obstacle(box, PlaceConfig.EXIT_CLEARANCE_M)])
+            planner.set_obstacles([o for o in (table_obstacle, self.obstacle(box, PlaceConfig.EXIT_CLEARANCE_M)) if o])
             level = planner.plan_segment(rise.positions[-1], back, touching=False) if rise is not None else None
             home = planner.plan_segment(level.positions[-1], planner.tool_pose(start), touching=False) if level is not None else None
             if home is None:

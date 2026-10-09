@@ -5,12 +5,17 @@
 const PAGE = window.TASK_PAGE;
 const ACTION_NAMES = { grasp: "抓取（旧）", move_right: "瓶子右移", place_in_box: "抓取摆放", pick_target: "物体抓取" };
 const ARM_NAMES = { auto: "自动", left: "左手", right: "右手" };
-const task = { status: null, requesting: false, planShownFor: -1, alignShownFor: -1 };
+const task = { status: null, requesting: false, planShownFor: -1, alignShownFor: -1, placeMode: "box", clickFor: "object", placeModeSet: false };
+const PLACE_ON = "border-orange-500 bg-orange-50 font-semibold text-orange-600";
+const PLACE_OFF = "border-gray-200 bg-white text-gray-800";
 const SEG_ON = "border-blue-600 bg-blue-50 font-semibold text-blue-600";
 const SEG_OFF = "border-gray-200 bg-white text-gray-800";
 
 const byId = (id) => document.getElementById(id);
-const ours = (status) => status.action === PAGE.action;
+// The pick-place page runs one of two tasks: into the box, or at a clicked desk point.
+const PAGE_ACTIONS = PAGE.place ? ["place_in_box", "place_at_spot"] : [PAGE.action];
+const ours = (status) => PAGE_ACTIONS.includes(status.action);
+const currentAction = () => (PAGE.place ? (task.placeMode === "spot" ? "place_at_spot" : "place_in_box") : PAGE.action);
 const busy = (status) => status.running || status.auto;
 const stepMode = () => byId("step-mode").checked;
 
@@ -76,7 +81,8 @@ function renderControls(status) {
   else start.textContent = fresh ? `确认并开始${PAGE.title}` : `继续：剩下 ${status.stages.length - status.next} 步`;
   start.disabled = blocked;
   const nextButton = byId("btn-next");
-  nextButton.classList.toggle("hidden", !stepMode() || fresh);
+  // style, not the hidden class: the button's inline-flex would win over it.
+  nextButton.style.display = !stepMode() || fresh ? "none" : "";
   if (!fresh) nextButton.textContent = `下一步：${next.label}`;
   nextButton.disabled = blocked;
   byId("btn-reset").disabled = busy(status);
@@ -88,12 +94,37 @@ function renderControls(status) {
   });
 }
 
+function swap(element, on, onClasses, offClasses) {
+  element.className = element.className.replace(new RegExp(`${onClasses}|${offClasses}`, "g"), "").trim() + " " + (on ? onClasses : offClasses);
+}
+
+function renderPlace(status) {
+  if (!PAGE.place) return;
+  if (!task.placeModeSet && ours(status)) task.placeMode = status.action === "place_at_spot" ? "spot" : "box";
+  swap(byId("place-spot"), task.placeMode === "spot", PLACE_ON, PLACE_OFF);
+  swap(byId("place-box"), task.placeMode === "box", PLACE_ON, PLACE_OFF);
+  byId("click-choice").classList.toggle("hidden", task.placeMode !== "spot");
+  byId("click-choice").classList.toggle("flex", task.placeMode === "spot");
+  swap(byId("click-object"), task.clickFor === "object", SEG_ON, SEG_OFF);
+  swap(byId("click-place"), task.clickFor === "place", PLACE_ON, PLACE_OFF);
+  ["place-spot", "place-box", "click-object", "click-place"].forEach((id) => { byId(id).disabled = busy(status) || task.requesting; });
+}
+
+function setPlaceMode(mode) {
+  task.placeMode = mode;
+  task.placeModeSet = true;
+  task.clickFor = mode === "spot" && !(task.status && task.status.place_spot) ? "place" : "object";
+  if (task.status) { renderPlace(task.status); renderControls(task.status); renderTarget(task.status); }
+}
+
 function renderTarget(status) {
   const target = status.target || {};
   const reach = target.reach ? ` · ${target.reach.text}` : "";
   const where = target.point ? "" : "（最近的）";
   const chosen = byId("target-chosen");
-  chosen.textContent = `已选择：${target.label || "—"}${where}${reach}`;
+  const spot = status.place_spot;
+  const place = !PAGE.place ? "" : task.placeMode === "box" ? " → 盒子" : spot ? ` → 桌面点 (${spot.xy[0].toFixed(2)}, ${spot.xy[1].toFixed(2)}) m` : " → 桌面点：请在画面里点放置位置";
+  chosen.textContent = `已选择：${target.label || "—"}${where}${reach}${place}`;
   const bad = target.reach && !target.reach.ok;
   chosen.className = `rounded-lg px-3 py-1.5 text-sm font-semibold ${bad ? "bg-orange-50 text-orange-700" : "bg-emerald-50 text-emerald-700"}`;
 }
@@ -166,6 +197,7 @@ async function poll() {
   const status = await response.json();
   task.status = status;
   renderSteps(status);
+  renderPlace(status);
   renderControls(status);
   renderTarget(status);
   renderArm(status);
@@ -320,10 +352,17 @@ async function start() {
   const status = task.status;
   const fresh = !ours(status) || status.next === 0 || status.next >= status.stages.length || status.failed;
   const target = status.target && status.target.label ? `「${status.target.label}」` : "最近的瓶子";
-  const what = PAGE.place ? `把${target}夹起来放进盒子` : `抓起${target}，再放回原处`;
+  const what = !PAGE.place ? `抓起${target}，再放回原处`
+    : task.placeMode === "spot" ? `把${target}夹起来放到点选的桌面位置` : `把${target}夹起来放进盒子`;
+  if (PAGE.place && task.placeMode === "spot" && !status.place_spot) {
+    task.clickFor = "place";
+    renderPlace(status);
+    notify("先在头部画面里点一下桌面上要放的位置（橙色十字），再开始。");
+    return;
+  }
   if (stepMode()) {
     if (fresh) {
-      await request(`${GRASP_API}/api/real/reset`, { action: PAGE.action });
+      await request(`${GRASP_API}/api/real/reset`, { action: currentAction() });
       notify(`已重置为「${PAGE.title}」：点「下一步」一步一步执行。`);
       return;
     }
@@ -332,7 +371,7 @@ async function start() {
   }
   if (fresh) {
     if (!confirm(`从头开始：${what}，最后关力矩（停在抓取位）。任何一步失败就停在原地；停止 / Esc / 空格 随时可停。开始？`)) return;
-    const result = await request(`${GRASP_API}/api/real/action`, { action: PAGE.action });
+    const result = await request(`${GRASP_API}/api/real/action`, { action: currentAction() });
     notify(result.ok ? "" : `没有开始：${result.error}`);
     return;
   }
@@ -351,10 +390,23 @@ App.ready.then(() => {
   live("head-image", `${GRASP_API}/api/depth/${PAGE.place ? "place" : "target"}.jpg`, "head-empty");
   live("depth-image", `${GRASP_API}/api/depth/refined.jpg`);
   for (const side of ["left", "right"]) byId(`${side}_wrist-image`).src = `${ROBOT_API}/stream/${side}_wrist`;
-  byId("head-image").addEventListener("click", (event) => {
+  byId("head-image").addEventListener("click", async (event) => {
     const point = imagePoint(byId("head-image"), event);
-    if (point && !task.requesting && !(task.status && busy(task.status))) chooseTarget({ point });
+    if (!point || task.requesting || (task.status && busy(task.status))) return;
+    if (PAGE.place && task.placeMode === "spot" && task.clickFor === "place") {
+      const result = await request(`${GRASP_API}/api/real/place_spot`, { point });
+      notify(result.ok ? "" : `放置位置没选上：${result.error}`);
+      if (result.ok) task.clickFor = "object";
+      return;
+    }
+    chooseTarget({ point });
   });
+  if (PAGE.place) {
+    byId("place-spot").addEventListener("click", () => setPlaceMode("spot"));
+    byId("place-box").addEventListener("click", () => setPlaceMode("box"));
+    byId("click-object").addEventListener("click", () => { task.clickFor = "object"; renderPlace(task.status); });
+    byId("click-place").addEventListener("click", () => { task.clickFor = "place"; renderPlace(task.status); });
+  }
   byId("target-form").addEventListener("submit", (event) => {
     event.preventDefault();
     const text = byId("target-text").value.trim();
@@ -373,7 +425,7 @@ App.ready.then(() => {
   });
   byId("btn-start").addEventListener("click", start);
   byId("btn-next").addEventListener("click", runStep);
-  byId("btn-reset").addEventListener("click", async () => { await request(`${GRASP_API}/api/real/reset`, { action: PAGE.action }); notify(""); });
+  byId("btn-reset").addEventListener("click", async () => { await request(`${GRASP_API}/api/real/reset`, { action: currentAction() }); notify(""); });
   App.stateListeners.push(renderJoints);
   poll();
   setInterval(poll, 500);

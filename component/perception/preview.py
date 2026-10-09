@@ -238,6 +238,14 @@ class DepthPreview:
                 text = f"PLACE: box {box.score:.2f}"
                 cv2.putText(image, text, (x1 + 3, max(18, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 4)
                 cv2.putText(image, text, (x1 + 3, max(18, y1 - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 140, 255), 2)
+        spot = target.get("spot") if boxes else None
+        if spot:
+            # 抓取摆放's desk point: an orange cross with a ring.
+            centre = (int(spot["uv"][0]), int(spot["uv"][1]))
+            cv2.drawMarker(image, centre, (0, 140, 255), cv2.MARKER_CROSS, 30, 3)
+            cv2.circle(image, centre, 16, (0, 140, 255), 2)
+            cv2.putText(image, "PLACE", (centre[0] + 18, centre[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 4)
+            cv2.putText(image, "PLACE", (centre[0] + 18, centre[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 140, 255), 2)
         if point:
             cv2.drawMarker(image, (int(point[0]), int(point[1])), (0, 0, 255), cv2.MARKER_CROSS, 22, 2)
         if not detections:

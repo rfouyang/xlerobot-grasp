@@ -67,8 +67,13 @@
                 {% if place %}
                 <span class="ms-2 text-xs font-semibold text-gray-500">放置</span>
                 <div class="flex gap-1.5" role="group">
-                  <button type="button" class="{{ seg }} border-gray-200 bg-white" disabled title="放到点选的桌面位置：即将支持">桌面点</button>
-                  <button type="button" class="{{ seg }} border-orange-500 bg-orange-50 font-semibold text-orange-600">盒子</button>
+                  <button id="place-spot" type="button" class="{{ seg }} border-gray-200 bg-white" title="放到在头部画面里点的桌面位置">桌面点</button>
+                  <button id="place-box" type="button" class="{{ seg }} border-gray-200 bg-white" title="放进头部画面里找到的开口朝上的盒子">盒子</button>
+                </div>
+                <div id="click-choice" class="hidden items-center gap-1.5" role="group">
+                  <span class="text-xs font-semibold text-gray-500">点击设置</span>
+                  <button id="click-object" type="button" class="{{ seg }} border-gray-200 bg-white">物体</button>
+                  <button id="click-place" type="button" class="{{ seg }} border-gray-200 bg-white">放置位置</button>
                 </div>
                 {% endif %}
                 <span class="ms-2 text-xs font-semibold text-gray-500">手臂</span>
@@ -93,7 +98,7 @@
             </div>
             <ol id="steps" class="min-h-0 flex-1 space-y-1 overflow-y-auto p-3"></ol>
             <div class="space-y-2 border-t border-gray-200 p-3">
-              <button id="btn-next" type="button" class="{{ primary }} hidden w-full">下一步</button>
+              <button id="btn-next" type="button" class="{{ primary }} w-full" style="display: none">下一步</button>
               <button id="btn-reset" type="button" class="{{ button }} w-full">重置流程</button>
               <div id="result-card" class="hidden rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">
                 <p class="font-semibold">上次结果</p><p id="result-text" class="mt-1"></p>

@@ -69,14 +69,16 @@ class TaskRunner:
         self.grasp = None
         # Between the bottle and the fixed finger at the alignment's last look (m).
         self.align_gap = 0.0
-        # ACTIONS' key; a grasp stops at planning when the bottle stands too far left, unless ignore_left (the user
-        # chose to grasp anyway).
-        self.action = "grasp"
+        # ACTIONS' key, 物体抓取 (pick_target) until a page asks for another. The old right-arm "grasp" stops at planning
+        # when the bottle stands too far left, unless ignore_left (the user chose to grasp anyway).
+        self.action = "pick_target"
         self.ignore_left = False
         # Set when a grasp stopped for that: the bottle's axis y and how far the move would take it right (m).
         self.too_left: dict | None = None
         # How far the shift step turns the bottle right (m), set at planning.
         self.shift_m = 0.0
+        # Where 抓取摆放 puts it when the place is a desk point: {"uv": the click, "xy": on the desk (m)}.
+        self.place_spot: dict | None = None
         # The page's arm choice for the interactive grasp: None = the nearer shoulder (ArmConfig.CHOICE), else a side.
         self.arm_override: str | None = None
         # Each finished step's duration (s), and the wrist camera's last look at the alignment (cm), for the page.
@@ -123,7 +125,8 @@ class TaskRunner:
                   "running": self.running, "auto": self.auto, "failed": self.failed, "progress": self.progress[-40:],
                   "plan_image": self.plan_image is not None, "align_image": self.align_image is not None,
                   "action": self.action, "too_left": self.too_left, "target": self.target, "arm": self.arm.side,
-                  "arm_override": self.arm_override or "auto", "stage_seconds": self.stage_seconds, "align": self.align_info}
+                  "arm_override": self.arm_override or "auto", "stage_seconds": self.stage_seconds, "align": self.align_info,
+                  "place_spot": self.place_spot}
         return status
 
     # --- choosing ---
@@ -153,7 +156,7 @@ class TaskRunner:
     def apply_target(self) -> None:
         """Perception and the wrist camera look for the chosen object in the interactive grasp and in pick-place (both
         pages let the user pick it); every other task for the nearest of the default prompt."""
-        chosen = self.target if self.action in ("pick_target", "place_in_box") else DEFAULT_TARGET
+        chosen = self.target if self.action in ("pick_target", "place_in_box", "place_at_spot") else DEFAULT_TARGET
         self.planning.perception.prompts = (chosen["prompt"],)
         self.planning.perception.point = tuple(chosen["point"]) if chosen["point"] else None
         self.planning.perception.point_area = None
@@ -168,6 +171,24 @@ class TaskRunner:
         result = self.selector.choose_side(prompt, side) if prompt and side in ("left", "right") else self.selector.choose(prompt, point, clear)
         if result["ok"]:
             self.apply_target()
+        return result
+
+    def set_place_spot(self, uv: list[float] | None) -> dict:
+        """抓取摆放's desk point from a head-image click (None clears it)."""
+        if self.running or self.auto:
+            result = {"ok": False, "error": "正在执行，等这一轮结束再选"}
+            return result
+        if uv is None:
+            self.place_spot = None
+            result = {"ok": True, "place_spot": None}
+            return result
+        xy = self.selector.desk_point(uv)
+        if xy is None:
+            result = {"ok": False, "error": "点的位置不在桌面上"}
+            return result
+        self.place_spot = {"uv": [round(uv[0]), round(uv[1])], "xy": [round(xy[0], 3), round(xy[1], 3)]}
+        self.report(f"放置点：桌面 x {xy[0]:.3f} m，y {xy[1]:+.3f} m")
+        result = {"ok": True, "place_spot": self.place_spot}
         return result
 
     def set_arm(self, side: str) -> dict:
@@ -330,7 +351,14 @@ class TaskRunner:
             return False
         self.shift_m = shift if self.action == "move_right" else 0.0
         box = None
-        if self.action == "place_in_box":
+        if self.action == "place_at_spot":
+            if not self.place_spot:
+                self.report("还没选放置点：在头部画面里点一下桌面上要放的位置")
+                return False
+            bounds = real_scene.placed.mesh.bounds
+            box = self.box.spot(np.array(self.place_spot["xy"]), real_scene.scene.table_top_z, (bounds[1, 0] - bounds[0, 0]) / 2)
+            self.report(f"放到桌面点 {self.place_spot['xy']}")
+        elif self.action == "place_in_box":
             box = self.box.observe(real_scene)
             if box is None:
                 self.report("头部画面里没找到开口朝上的盒子")
@@ -362,6 +390,7 @@ class TaskRunner:
             placed = self.box.plan(real_scene, grasp, segments, box)
             if placed is None:
                 self.report("盒子测出来放不下瓶子（可能没测准，看头部画面里盒子的框）" if self.box.failure == "small"
+                            else "没有规划出放到桌面点的路径（右臂够不到那里，或那里放不下）" if self.action == "place_at_spot"
                             else "没有规划出放进盒子的路径（右臂够不到盒子里能放的点）")
                 return False
             segments.update(placed["segments"])
