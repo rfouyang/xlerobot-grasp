@@ -82,7 +82,7 @@ class ArmMotion:
         current = self.moveit.joint_positions()
         clear, lowest, _, link = self.guard.check_rows(self.arm, rows, current)
         if not clear:
-            self.report(f"桌面守卫：这一步「{segment_name}」会让 {link} 离桌面只剩 {lowest * 100:.1f} cm（要 {self.arm.desk_margin_m * 100:.0f} cm），不执行")
+            self.report(f"桌面守卫：这一步「{segment_name}」会让 {link} 离桌面只剩 {lowest * 100:.1f} cm（要 {self.guard.required_m * 100:.1f} cm），不执行")
             return False
         if not self.start_at(rows[0]):
             return False

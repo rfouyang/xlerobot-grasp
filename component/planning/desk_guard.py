@@ -89,23 +89,29 @@ class DeskGuard:
                 clear, lowest, row, link = self.check_rows(arm, segment.positions, {**fixed, arm.jaw: jaw})
                 if not clear:
                     return False, {"segment": name, "clearance_m": lowest, "row": row, "link": link,
-                                   "required_m": arm.desk_margin_m, "jaw_rad": jaw}
+                                   "required_m": self.required_m, "jaw_rad": jaw}
         return True, {}
 
     def check_rows(self, arm: Arm, rows: np.ndarray, fixed: dict[str, float]) -> tuple[bool, float, int, str]:
         """rows (T, 5): the arm's URDF joints along a trajectory, densified to steps of at most STEP_RAD; fixed: every
-        other joint. ok when every row keeps the margin; also the lowest clearance, its row and link."""
+        other joint. ok when every row keeps the margin; also the lowest clearance, its row and link. A trajectory that
+        starts below the margin (the left arm's grasp start pose sits at 5.9 cm against its 6 cm, which refused every
+        left-arm motion on 2026-10-09) may leave from there but not come closer than it started (START_SLACK_M):
+        the required clearance is min(margin, start - slack), kept in self.required_m for the report."""
         rows = np.asarray(rows, float)
         dense = [rows[0]]
         for a, b in zip(rows[:-1], rows[1:]):
             n = max(1, int(np.ceil(np.abs(b - a).max() / DeskGuardConfig.STEP_RAD)))
             dense.extend(a + (b - a) * t for t in np.linspace(0, 1, n + 1)[1:])
         worst, at, which = np.inf, 0, ""
+        start = None
         for k, row in enumerate(dense):
             clearance, link = self.clearance(arm, {**fixed, **dict(zip(arm.joints, map(float, row)))})
+            start = clearance if start is None else start
             if clearance < worst:
                 worst, at, which = clearance, k, link
-        return worst >= arm.desk_margin_m, worst, at, which
+        self.required_m = min(arm.desk_margin_m, start - DeskGuardConfig.START_SLACK_M)
+        return worst >= self.required_m, worst, at, which
 
 
 def demo_desk_guard() -> None:

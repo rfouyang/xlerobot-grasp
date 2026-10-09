@@ -221,6 +221,8 @@ class DeskGuardConfig:
     # While following, a target may come this much closer than the arm's margin before streaming stops (the plan was
     # checked with the full margin; the wrist levelling moves the jaw a little).
     FOLLOW_TOLERANCE_M = 0.01
+    # A trajectory starting below an arm's margin (at rest) may not come closer than its start by more than this (m).
+    START_SLACK_M = 0.003
     # The desk is taken to reach the robot: arm points in front of this (base x, m) are checked.
     FRONT_X = 0.0
     # Mesh points per link, and the densest joint step checked along a trajectory (rad).
