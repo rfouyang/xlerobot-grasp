@@ -35,7 +35,8 @@ class ProxyHelper:
 
     async def http(self, request: Request, path: str):
         headers = {key: value for key, value in request.headers.items() if key.lower() not in HOP_HEADERS}
-        outgoing = self.client.build_request(request.method, httpx.URL(path=f"/{path}", query=request.url.query.encode()),
+        outgoing = self.client.build_request(request.method,
+                                             httpx.URL(path=f"/{path}", query=request.url.query.encode()),
                                              headers=headers, content=await request.body())
         try:
             incoming = await self.client.send(outgoing, stream=True)
@@ -45,12 +46,14 @@ class ProxyHelper:
             if request.method != "GET":
                 response = JSONResponse({"error": f"后台 {self.base_url} 断开了连接"}, status_code=502)
                 return response
-            incoming = await self.client.send(self.client.build_request(outgoing.method, outgoing.url, headers=outgoing.headers), stream=True)
+            incoming = await self.client.send(self.client.build_request(outgoing.method, outgoing.url,
+                                                                        headers=outgoing.headers), stream=True)
         except httpx.ConnectError:
             response = JSONResponse({"error": f"后台 {self.base_url} 没有启动"}, status_code=503)
             return response
         response = StreamingResponse(incoming.aiter_raw(), status_code=incoming.status_code,
-                                     headers={key: value for key, value in incoming.headers.items() if key.lower() not in HOP_HEADERS},
+                                     headers={key: value for key, value in incoming.headers.items()
+                                              if key.lower() not in HOP_HEADERS},
                                      background=BackgroundTask(incoming.aclose))
         return response
 

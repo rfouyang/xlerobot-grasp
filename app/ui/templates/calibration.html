@@ -1,34 +1,79 @@
 {% extends "base.html" %}
-{# 相机标定 (design: 06, and 深度对比 moved in as a tab): the board seen live by the three cameras and the current
-   results; the depth comparison. #}
+{# 相机标定 (design: Penpot page 08, 「相机标定 / 电脑（修订）」): ChArUco and 深度对比 as segmented tabs. ChArUco: the
+   camera block of the keyboard and task pages (the board's corners found live in the head 640×480 and both wrists
+   480×640; the head depth in the middle), the wrist hand-eye session on the right, as tall as the cameras, and the
+   results in use below. 深度对比: head RGB, sensor depth, FFS depth side by side at one size, to compare. #}
 {% block title %}相机标定{% endblock %}
-{% block subtitle %}桌面 ChArUco 板：头部和左右腕相机的内参、手眼和关节偏置；深度对比看头部深度的质量。{% endblock %}
 {% block scripts %}<script src="/static/ui/calibration.js?v={{ asset_version('calibration.js') }}" defer></script>{% endblock %}
-{% set tab = "rounded-lg px-4 py-2 text-sm font-medium" %}
+{% set view = "overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs" %}
+{# calibration.js swaps TAB_ON / TAB_OFF. #}
+{% set tab = "rounded-md border px-4 py-1.5 text-sm" %}
+{% set tab_on = "border-gray-200 bg-white font-semibold text-blue-600 shadow-sm" %}
+{% set tab_off = "border-transparent text-gray-600 hover:bg-gray-200" %}
 {% block content %}
-        <div class="flex gap-2" role="tablist">
-          <button id="tab-charuco" type="button" class="{{ tab }} bg-blue-50 text-blue-600" data-tab="charuco">ChArUco 标定</button>
-          <button id="tab-depth" type="button" class="{{ tab }} text-gray-600 hover:bg-gray-100" data-tab="depth">深度对比</button>
+        <div class="inline-grid grid-cols-2 gap-1 rounded-lg bg-gray-100 p-1" role="tablist">
+          <button id="tab-charuco" type="button" class="{{ tab }} {{ tab_on }}" data-tab="charuco">ChArUco 标定</button>
+          <button id="tab-depth" type="button" class="{{ tab }} {{ tab_off }}" data-tab="depth">深度对比</button>
         </div>
 
-        <!-- ChArUco -->
-        <div id="panel-charuco" class="space-y-4">
-          <section class="{{ card }} px-4 py-3 text-sm text-gray-700">
-            <p><span class="font-semibold">流程：</span>1 标定板设置 → 2 检测与采样 → 3 计算标定 → 4 验证与保存。
-              <span id="board-text" class="text-gray-500"></span></p>
-          </section>
-          <div class="grid gap-3 md:grid-cols-3">
-            {% for camera, label in [("head", "头部 RGB"), ("left_wrist", "左腕相机"), ("right_wrist", "右腕相机")] %}
-            <figure class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
-              <div class="relative aspect-[4/3] bg-gray-900"><img id="detect-{{ camera }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></div>
-              <figcaption class="flex items-center justify-between px-3 py-2 text-xs">
-                <span class="font-semibold text-gray-800">{{ label }} / 角点</span><span id="count-{{ camera }}" class="text-gray-500">—</span>
-              </figcaption>
-            </figure>
-            {% endfor %}
+        <!-- ChArUco. --cam as on the keyboard page, less the tab row (58 px). -->
+        <div id="panel-charuco" class="space-y-4" style="--cam: max(22rem, calc((100dvh - 286px) * 0.906)); max-width: calc(var(--cam) + 656px)">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+            <div class="flex w-full shrink-0 flex-col gap-3 lg:w-[min(calc(100%_-_532px),var(--cam))]">
+              <figure class="{{ view }}">
+                <div class="relative aspect-[4/3] bg-gray-900"><img id="detect-head" class="absolute inset-0 h-full w-full object-contain" alt="头部 RGB / 角点" /></div>
+                <figcaption class="flex items-center justify-between gap-2 px-3 py-2 text-xs">
+                  <span class="text-sm font-semibold text-gray-800">头部 RGB / 角点</span><span id="count-head" class="text-gray-500">—</span>
+                </figcaption>
+              </figure>
+              <div class="grid grid-cols-[9fr_16fr_9fr] gap-3">
+                {% for camera, label, aspect in [("left_wrist", "左腕相机", "aspect-[3/4]"), ("head_depth", "头部平滑深度", "aspect-[4/3]"), ("right_wrist", "右腕相机", "aspect-[3/4]")] %}
+                <figure class="{{ view }}">
+                  <div class="relative {{ aspect }} bg-gray-900">
+                    {% if camera == "head_depth" %}<img id="depth-image" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" />
+                    {% else %}<img id="detect-{{ camera }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }} / 角点" />{% endif %}
+                  </div>
+                  <figcaption class="flex items-center gap-2 px-3 py-1.5 text-xs">
+                    <span class="shrink-0 font-semibold text-gray-800">{{ label }}</span>
+                    <span id="{{ "depth-note" if camera == "head_depth" else "count-" ~ camera }}" class="min-w-0 truncate text-[11px] text-gray-500"></span>
+                  </figcaption>
+                </figure>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- 腕部手眼标定, as tall as the cameras; the frames list scrolls. -->
+            <div class="relative min-w-0 lg:min-w-[516px] lg:max-w-[640px] lg:flex-1">
+            <section class="{{ view }} flex flex-col gap-3 px-4 py-3.5 lg:absolute lg:inset-0">
+              <div class="flex items-center gap-2">
+                <h2 class="me-auto text-base font-bold text-gray-800">腕部手眼标定</h2>
+                <span id="session-name" class="truncate font-mono text-xs text-gray-500">没有会话</span>
+              </div>
+              <p class="text-xs text-gray-500">1 标定板设置 → 2 检测与采样 → 3 计算标定 → 4 验证与保存。<span id="board-text"></span></p>
+              <p class="text-sm text-gray-700">标定板平放在桌上不要动。把手臂摆到不同角度，让<strong>腕部相机</strong>和<strong>头部相机</strong>都看到板子，每个姿态采一帧：至少 6 帧，最好 12 帧以上（斜着看、远近都要有）。采集不动机器人。</p>
+              <div class="grid grid-cols-[auto_1fr_1fr] gap-2">
+                <select id="session-arm" aria-label="标定哪只手" class="rounded-lg border border-gray-200 px-3 py-2 text-sm"><option value="left">左腕</option><option value="right">右腕</option></select>
+                <button id="btn-session" type="button" class="{{ button }}">开始新的标定会话</button>
+                <button id="btn-capture" type="button" class="{{ primary }}" disabled>采集当前有效帧</button>
+                <span></span>
+                <button id="btn-solve" type="button" class="{{ button }}" disabled>计算标定</button>
+                <button id="btn-save" type="button" class="{{ button }}" disabled>保存为新版本</button>
+              </div>
+              <p id="session-note" class="text-xs text-gray-500"></p>
+              <div class="min-h-0 flex-1 overflow-y-auto rounded-lg border border-gray-200">
+                <table class="min-w-full text-xs"><thead class="sticky top-0 bg-gray-50"><tr class="text-gray-500">
+                  <th class="px-3 py-1.5 text-start font-medium">帧</th><th class="px-3 py-1.5 text-start font-medium">腕部角点</th><th class="px-3 py-1.5 text-start font-medium">头部角点</th><th class="px-3 py-1.5 text-start font-medium">手臂关节（°）</th>
+                </tr></thead><tbody id="session-poses" class="divide-y divide-gray-100 font-mono"></tbody></table>
+              </div>
+              <div id="session-result" class="hidden rounded-lg bg-blue-50 p-3 text-xs text-blue-900"></div>
+            </section>
+            </div>
           </div>
-          <section class="{{ card }}">
-            <div class="{{ card_head }}"><h2 class="{{ card_title }}">当前使用的标定结果</h2><span class="text-xs text-gray-500">config/calibration/，新的在前</span></div>
+
+          <section class="{{ view }}">
+            <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
+              <h2 class="text-base font-bold text-gray-800">当前使用的标定结果</h2><span class="text-xs text-gray-500">config/calibration/，新的在前</span>
+            </div>
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50"><tr>
@@ -41,42 +86,21 @@
               </table>
             </div>
           </section>
-          <section class="{{ card }}">
-            <div class="{{ card_head }}">
-              <h2 class="{{ card_title }}">腕部手眼标定</h2>
-              <span id="session-name" class="font-mono text-xs text-gray-500">没有会话</span>
-            </div>
-            <div class="space-y-3 p-4 text-sm text-gray-700">
-              <p>标定板平放在桌上不要动。用键盘控制（或关力矩用手）把手臂摆到不同角度，让<strong>腕部相机</strong>看到板子、<strong>头部相机</strong>也看到板子，每摆一个姿态采一帧；至少 6 个有效帧，最好 12 个以上（斜着看、远近都要有）。采集不动机器人。</p>
-              <div class="flex flex-wrap items-center gap-2">
-                <select id="session-arm" class="rounded-lg border border-gray-200 px-3 py-2 text-sm"><option value="left">左腕</option><option value="right">右腕</option></select>
-                <button id="btn-session" type="button" class="{{ button }}">开始新的标定会话</button>
-                <button id="btn-capture" type="button" class="{{ primary }}" disabled>采集当前有效帧</button>
-                <button id="btn-solve" type="button" class="{{ button }}" disabled>计算标定</button>
-                <button id="btn-save" type="button" class="{{ button }}" disabled>保存为新版本</button>
-                <span id="session-note" class="text-xs text-gray-500"></span>
-              </div>
-              <div class="overflow-x-auto"><table class="min-w-full text-xs"><thead><tr class="text-gray-500">
-                <th class="py-1 pe-4 text-start">帧</th><th class="py-1 pe-4 text-start">腕部角点</th><th class="py-1 pe-4 text-start">头部角点</th><th class="py-1 text-start">手臂关节（°）</th>
-              </tr></thead><tbody id="session-poses" class="divide-y divide-gray-100 font-mono"></tbody></table></div>
-              <div id="session-result" class="hidden rounded-lg bg-blue-50 p-3 text-xs text-blue-900"></div>
-            </div>
-          </section>
         </div>
 
-        <!-- Depth comparison -->
+        <!-- 深度对比: one size for all three, to compare. -->
         <div id="panel-depth" class="hidden space-y-4">
           <div class="grid gap-3 md:grid-cols-3">
-            {% for kind, label in [("rgb", "头部 RGB"), ("raw", "头部原始深度（传感器）"), ("refined", "头部处理后深度（FFS）")] %}
-            <figure class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
+            {% for kind, label in [("rgb", "头部 RGB"), ("raw", "头部原始深度（传感器）"), ("refined", "头部平滑深度（FFS）")] %}
+            <figure class="{{ view }}">
               <div class="relative aspect-[4/3] bg-gray-900"><img id="compare-{{ kind }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></div>
-              <figcaption class="px-3 py-2 text-xs font-semibold text-gray-800">{{ label }}</figcaption>
+              <figcaption class="flex items-center gap-2 px-3 py-2 text-xs"><span class="shrink-0 font-semibold text-gray-800">{{ label }}</span>{% if kind != "rgb" %}<span id="compare-note-{{ kind }}" class="min-w-0 truncate text-[11px] text-gray-500"></span>{% endif %}</figcaption>
             </figure>
             {% endfor %}
           </div>
-          <section class="{{ card }} space-y-2 px-4 py-3 text-sm text-gray-700">
-            <h2 class="{{ card_title }}">对比显示</h2>
-            <p>两张深度用同一色标（蓝近红远，0.2–1.5 m），黑色：没有有效深度。FFS 深度乘了标定的尺度（ChArUco 板，见上一页的「FFS 深度尺度」）。</p>
+          <section class="{{ view }} space-y-2 px-4 py-3 text-sm text-gray-700">
+            <h2 class="text-base font-bold text-gray-800">对比显示</h2>
+            <p>两张深度用同一色标（<span id="compare-scale">蓝近红远</span>），黑色：没有有效深度。FFS 深度乘了标定的尺度（ChArUco 板，见「当前使用的标定结果」里的「FFS 深度尺度」）。</p>
             <p id="compare-time" class="text-xs text-gray-500"></p>
             <div class="flex gap-2">
               <button id="btn-freeze" type="button" class="{{ button }}">冻结当前帧</button>

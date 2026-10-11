@@ -61,7 +61,8 @@ def demo_logger() -> None:
     logger.info("日志已配置：{}", log_dir)
     camera_log = logging.getLogger("lerobot.cameras")
     for attempt in range(1000):
-        camera_log.warning("Error reading frame in background thread for OpenCVCamera(/dev/video0): attempt %d", attempt)
+        camera_log.warning("Error reading frame in background thread for OpenCVCamera(/dev/video0): attempt %d",
+                           attempt)
     logging.getLogger("uvicorn").warning("a different warning still gets through")
 
 

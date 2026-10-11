@@ -1,3 +1,3 @@
-from component.robot.robot_application import RobotApplication
+from component.robot_application import RobotApplication
 
 robot_context = RobotApplication()

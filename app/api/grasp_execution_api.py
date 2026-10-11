@@ -18,28 +18,24 @@ from loguru import logger
 from app.context import grasp_context
 from config.settings import ServerConfig, use_utf8_output
 
+router = APIRouter()
 
-def create_grasp_execution_api() -> APIRouter:
-    router = APIRouter()
+@router.post("/api/grasps/execute")
+def execute():
+    """Plain def: runs in a worker thread while the WebSocket below streams the steps."""
+    response = grasp_context.execute_grasp()
+    return response
 
-    @router.post("/api/grasps/execute")
-    def execute():
-        """Plain def: runs in a worker thread while the WebSocket below streams the steps."""
-        response = grasp_context.execute_grasp()
-        return response
-
-    @router.websocket("/ws/execution")
-    async def execution_stream(websocket: WebSocket):
-        await websocket.accept()
-        try:
-            while True:
-                await websocket.send_json(grasp_context.execution_status())
-                await asyncio.sleep(ServerConfig.STATE_PUSH_INTERVAL_S * 2)
-        except WebSocketDisconnect:
-            # The page was closed or reloaded; nothing to clean up.
-            pass
-
-    return router
+@router.websocket("/ws/execution")
+async def execution_stream(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            await websocket.send_json(grasp_context.execution_status())
+            await asyncio.sleep(ServerConfig.STATE_PUSH_INTERVAL_S * 2)
+    except WebSocketDisconnect:
+        # The page was closed or reloaded; nothing to clean up.
+        pass
 
 
 def demo_grasp_execution_api() -> None:
@@ -47,7 +43,7 @@ def demo_grasp_execution_api() -> None:
     grasp_context.start()
     grasp_context.generate_grasps("water_bottle")
     app = FastAPI()
-    app.include_router(create_grasp_execution_api())
+    app.include_router(router)
     client = TestClient(app)
     result = client.post("/api/grasps/execute").json()
     logger.info("执行：{}，抓取 #{}\n{}", result["done"], result["index"], "\n".join(result["progress"]))

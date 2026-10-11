@@ -111,8 +111,9 @@ class RestPoseConfig:
 class CameraStreamConfig:
     # Order on the page.
     CAMERAS = {"left_wrist": "左腕", "head": "头部 RGB", "head_depth": "头部深度", "right_wrist": "右腕"}
-    # The head depth view's colour scale (TURBO, near = blue, far = red); no depth = black.
-    DEPTH_RANGE_M = (0.2, 1.5)
+    # The head depth view's colour scale (TURBO, near = blue, far = red); no depth = black. The same as the grasp
+    # side's depth pictures (PerceptionConfig.PREVIEW_RANGE_M), so one colour is one distance on every page.
+    DEPTH_RANGE_M = (0.25, 1.1)
     JPEG_QUALITY = 70
     STREAM_HZ = 15
     # The head D415's two infrared images (the rectified stereo pair its depth comes from) are streamed too, at the
@@ -155,7 +156,8 @@ class JointMappingConfig:
     # Per-arm corrections on top of ARM (deg, by motor): true URDF angle = mapped angle + correction. The left arm's
     # from its own calibration (2026-10-09); the right arm's mapping is the reference the head camera was calibrated on.
     ARM_CORRECTION_DEG = {"right_arm": {},
-                          "left_arm": json.loads((BASE_DIR / "config" / "calibration" / "left_arm_20261009.json").read_text())["correction_deg"]}
+                          "left_arm": json.loads((BASE_DIR / "config" / "calibration" /
+                                                  "left_arm_20261009.json").read_text())["correction_deg"]}
 
 
 class DeviceMatchConfig:

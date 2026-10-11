@@ -12,8 +12,10 @@ if str(BASE_DIR) not in sys.path:
 import numpy as np
 from loguru import logger
 
-from component.grasp_generation.grasp_prediction import GraspCandidate, GraspPrediction
-from component.grasp_generation.tabletop_scene import PlacedObject, TabletopScene
+from component.grasp_generation.grasp_candidate import GraspCandidate
+from component.grasp_generation.grasp_prediction import GraspPrediction
+from component.grasp_generation.placed_object import PlacedObject
+from component.grasp_generation.tabletop_scene import TabletopScene
 from config.settings import use_utf8_output
 
 

@@ -85,7 +85,8 @@ class ByteplusAsrHelper:
 
     def config(self) -> dict:
         config = {"user": {"uid": ByteplusAsrConfig.UID},
-                  "audio": {"format": "pcm", "codec": "raw", "rate": ByteplusAsrConfig.SAMPLE_RATE, "bits": 16, "channel": 1},
+                  "audio": {"format": "pcm", "codec": "raw", "rate": ByteplusAsrConfig.SAMPLE_RATE, "bits": 16,
+                            "channel": 1},
                   "request": {"model_name": ByteplusAsrConfig.MODEL, "enable_itn": True, "enable_punc": True,
                               "show_utterances": True, "end_window_size": ByteplusAsrConfig.END_WINDOW_MS}}
         return config
@@ -93,7 +94,8 @@ class ByteplusAsrHelper:
     async def transcribe_async(self, pcm: bytes) -> str:
         """The whole recording at once (not paced like live speech: it is already recorded), then the final text."""
         frame_bytes = ByteplusAsrConfig.SAMPLE_RATE * self.frame_ms // 1000 * 2
-        headers = {"X-Api-Key": self.api_key, "X-Api-Resource-Id": ByteplusAsrConfig.RESOURCE_ID, "X-Api-Request-Id": str(uuid.uuid4())}
+        headers = {"X-Api-Key": self.api_key, "X-Api-Resource-Id": ByteplusAsrConfig.RESOURCE_ID,
+                   "X-Api-Request-Id": str(uuid.uuid4())}
         text = ""
         timeout = aiohttp.ClientTimeout(total=ByteplusAsrConfig.MAX_SECONDS + ByteplusAsrConfig.FINAL_TIMEOUT_S + 10)
         async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -108,7 +110,7 @@ class ByteplusAsrHelper:
                     while True:
                         try:
                             message = await socket.receive(timeout=0.001)
-                        except asyncio.TimeoutError:
+                        except TimeoutError:
                             break
                         if message.type == aiohttp.WSMsgType.BINARY:
                             text = self.text(self.parse(message.data)) or text
@@ -116,7 +118,7 @@ class ByteplusAsrHelper:
                 while True:
                     try:
                         message = await socket.receive(timeout=ByteplusAsrConfig.FINAL_TIMEOUT_S)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         break
                     if message.type != aiohttp.WSMsgType.BINARY:
                         break

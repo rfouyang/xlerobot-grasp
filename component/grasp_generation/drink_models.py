@@ -14,7 +14,6 @@ import trimesh
 from loguru import logger
 
 from config.planning import SceneConfig
-
 from config.settings import use_utf8_output
 
 # (radius, height) outlines in metres, bottom centre to top centre.
@@ -23,7 +22,8 @@ PROFILES = {
     "water_bottle": [(0.0, 0.0), (0.030, 0.0), (0.0325, 0.006), (0.0325, 0.150), (0.030, 0.163), (0.017, 0.183),
                      (0.014, 0.188), (0.014, 0.210), (0.0, 0.210)],
     # 330 ml can: 6.6 cm body, 12.2 cm tall, necked in at both ends.
-    "coke_can": [(0.0, 0.0), (0.026, 0.0), (0.033, 0.008), (0.033, 0.110), (0.027, 0.120), (0.026, 0.122), (0.0, 0.122)],
+    "coke_can": [(0.0, 0.0), (0.026, 0.0), (0.033, 0.008), (0.033, 0.110), (0.027, 0.120), (0.026, 0.122),
+                 (0.0, 0.122)],
     # 500 ml PET bottle: 6.6 cm body, longer shoulder, 22.5 cm tall.
     "sprite_bottle": [(0.0, 0.0), (0.028, 0.0), (0.033, 0.008), (0.033, 0.140), (0.031, 0.155), (0.018, 0.190),
                       (0.0145, 0.198), (0.0145, 0.225), (0.0, 0.225)],

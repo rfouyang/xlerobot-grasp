@@ -1,138 +1,180 @@
 {% extends "base.html" %}
-{# The two task pages (design: Penpot 08 修订): 物体抓取 (pick it up, put it back) and 抓取摆放 (pick it up, put it in
-   the box). The head RGB largest; below it the left wrist, the head depth and the right wrist; the task settings in a
-   row under them; the steps in a column on the right; the debug details folded at the bottom. #}
+{# The two task pages (design: Penpot page 08, 「物体抓取 / 电脑（修订）」「抓取摆放 / 电脑（修订）」): 物体抓取 (pick it
+   up, put it back) and 抓取摆放 (pick it up, put it in the box or on a clicked desk spot). Left: the camera block of
+   the keyboard page (head 640×480 to click on; left wrist 480×640, head depth 640×480, right wrist 480×640), its width
+   --cam set by the window's height. Right, as tall as the cameras: 对话, 任务步骤 (and the start), then 任务进度 (scrolls if it must).
+   Bottom: 调试详情 and 回到停靠位并关闭力矩. #}
 {% block title %}{{ title }}{% endblock %}
-{% block subtitle %}{{ subtitle }}{% endblock %}
 {% block scripts %}<script>window.TASK_PAGE = {{ {"action": action, "place": place, "title": title} | tojson }};</script>
-<script src="/static/ui/task.js?v={{ asset_version('task.js') }}" defer></script>{% endblock %}
-{% set view = "relative bg-gray-900" %}
-{% set caption = "flex items-center justify-between gap-x-2 px-3 py-2 text-xs" %}
-{% set seg = "rounded-lg border px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50" %}
+{# task.js first: the other two use its PAGE and helpers; it starts the page once all three have run. #}
+{% for script in ("task.js", "task_chat.js", "task_voice.js") %}
+<script src="/static/ui/{{ script }}?v={{ asset_version(script) }}" defer></script>
+{% endfor %}{% endblock %}
+{% set view = "overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs" %}
+{% set track = "grid gap-1 rounded-lg bg-gray-100 p-1" %}
+{# The segmented tabs, as on the keyboard page; task.js swaps SEG_ON / SEG_OFF (PLACE_ON for the placement). #}
+{% set seg = "rounded-md border px-2 py-1 text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50" %}
+{% set seg_on = "border-gray-200 bg-white font-semibold text-blue-600 shadow-sm" %}
+{% set seg_off = "border-transparent text-gray-600 hover:bg-gray-200" %}
+{% set label = "w-8 shrink-0 text-xs font-semibold text-gray-500" %}
+{% set dock = "inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-800 hover:bg-gray-50" %}
+{% block topbar %}
+          <!-- 语音讲解: the robot says what it is doing, choosing the target and doing the task (task_voice.js); remembered here. -->
+          <label for="narrate" class="flex cursor-pointer items-center gap-x-2 rounded-lg border border-gray-200 px-3 py-1.5 shadow-2xs" title="打开后，机器人用语音说出它在做什么：找到的目标、每一步、结果">
+            <input id="narrate" type="checkbox" class="relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full border border-gray-200 bg-gray-100 p-px transition-colors duration-200 checked:border-blue-600 checked:bg-blue-600 disabled:pointer-events-none disabled:opacity-50 before:inline-block before:size-5 before:translate-x-0 before:rounded-full before:bg-white before:shadow-sm before:transition before:duration-200 checked:before:translate-x-full" />
+            <span class="text-sm font-semibold text-gray-800">语音讲解</span>
+          </label>
+{% endblock %}
 {% block content %}
-        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
-          <div class="flex min-w-0 flex-col gap-4">
-            <!-- Head RGB: click to choose; the backend draws where each arm reaches, the midline, the target{{ " and the boxes" if place }}. -->
-            <figure class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
-              <div class="{{ view }} aspect-[4/3] max-h-[62vh] w-full">
-                <img id="head-image" class="absolute inset-0 hidden h-full w-full cursor-crosshair object-contain" alt="头部 RGB（点选目标）" />
-                <p id="head-empty" class="absolute inset-0 m-auto h-fit text-center text-xs text-gray-400">等待头部画面</p>
-                <div class="absolute end-3 top-3 flex items-center gap-x-3 rounded-full bg-white/90 px-3 py-1 text-xs shadow-sm">
-                  <span class="font-semibold text-gray-700">图例</span>
-                  <span class="text-emerald-700">■ 右手可达</span><span class="text-blue-700">■ 左手可达</span>
-                  <span class="text-fuchsia-700">■ 目标</span>{% if place %}<span class="text-orange-600">■ 放置</span>{% endif %}
+        <!-- --cam: (window height − the rest of the page) / 1.103, the camera block's height-to-width ratio. -->
+        <div class="space-y-4" style="--cam: max(22rem, calc((100dvh - 228px) * 0.906)); max-width: calc(var(--cam) + 656px)">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+            <div class="flex w-full shrink-0 flex-col gap-3 lg:w-[min(calc(100%_-_532px),var(--cam))]">
+              <!-- Head RGB: click to choose; the backend draws where each arm reaches, the midline, the target{{ " and the place" if place }}. -->
+              <figure class="{{ view }}">
+                <div class="relative aspect-[4/3] bg-gray-900">
+                  <img id="head-image" class="absolute inset-0 hidden h-full w-full cursor-crosshair object-contain" alt="头部 RGB（点选目标）" />
+                  <p id="head-empty" class="absolute inset-0 m-auto h-fit text-center text-xs text-gray-400">等待头部画面</p>
+                  <div id="cand-layer" class="pointer-events-none absolute inset-0"></div>
+                  <span id="click-marker" class="pointer-events-none absolute hidden size-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px]" aria-hidden="true"></span>
                 </div>
-              </div>
-              <figcaption class="{{ caption }}">
-                <span class="font-semibold text-gray-800">头部 RGB（点选目标）</span>
-                <span class="truncate text-gray-500">白线：分手线（左边用左手，右边用右手）</span>
-              </figcaption>
-            </figure>
-
-            <!-- Left wrist · head depth · right wrist; the arm doing the task is framed in blue. -->
-            <div class="grid grid-cols-3 gap-3">
-              {% for slot, label in [("left_wrist", "左腕相机"), ("depth", "头部处理后深度"), ("right_wrist", "右腕相机")] %}
-              <figure id="tile-{{ slot }}" class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs">
-                <div class="{{ view }} aspect-[4/3]">
-                  <img id="{{ slot }}-image" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" />
-                  {% if slot != "depth" %}<span id="{{ slot }}-active" class="absolute end-2 top-2 hidden rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-bold text-white">使用中</span>{% endif %}
-                </div>
-                <figcaption class="{{ caption }}">
-                  <span class="font-semibold text-gray-800">{{ label }}</span>
-                  <span id="{{ slot }}-note" class="truncate text-gray-500">{{ "FFS，蓝近红远" if slot == "depth" else "" }}</span>
+                <figcaption class="flex items-center justify-between gap-2 px-3 py-2 text-xs">
+                  <span id="head-caption" class="truncate text-sm font-semibold text-gray-800">头部 RGB（点选目标）</span>
+                  <!-- The legend of what the backend draws on the picture (kept off the picture itself). -->
+                  <span class="flex min-w-0 items-center gap-x-3 truncate text-[11px] font-medium">
+                    <span class="text-fuchsia-700">■ 目标</span>{% if place %}<span class="text-orange-600">■ 放置</span>{% endif %}<span class="text-blue-700">■ 左手可达</span><span class="text-emerald-700">■ 右手可达</span>
+                    <span class="text-yellow-600">━ 分手线</span>
+                  </span>
                 </figcaption>
               </figure>
-              {% endfor %}
+              <!-- Left wrist · head depth · right wrist; the arm doing the task is framed in blue. -->
+              <div class="grid grid-cols-[9fr_16fr_9fr] gap-3">
+                {% for slot, name, aspect in [("left_wrist", "左腕相机", "aspect-[3/4]"), ("depth", "头部平滑深度", "aspect-[4/3]"), ("right_wrist", "右腕相机", "aspect-[3/4]")] %}
+                <figure id="tile-{{ slot }}" class="{{ view }}">
+                  <div class="relative {{ aspect }} bg-gray-900">
+                    <img id="{{ slot }}-image" class="absolute inset-0 h-full w-full object-contain" alt="{{ name }}" />
+                    {% if slot != "depth" %}<span id="{{ slot }}-active" class="absolute end-2 top-2 hidden rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">使用中</span>{% endif %}
+                  </div>
+                  <figcaption class="flex items-center gap-2 px-3 py-1.5 text-xs">
+                    <span class="shrink-0 font-semibold text-gray-800">{{ name }}</span>
+                    <span id="{{ slot }}-note" class="min-w-0 truncate text-[11px] text-gray-500"></span>
+                  </figcaption>
+                </figure>
+                {% endfor %}
+              </div>
             </div>
 
-            <!-- Task settings, in a row. -->
-            <section class="{{ card }} gap-3 p-4">
-              <h2 class="{{ card_title }}">任务设置</h2>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="w-10 text-xs font-semibold text-gray-500">目标</span>
-                <div class="flex gap-1.5" role="group">
-                  <button id="mode-click" type="button" class="{{ seg }} border-blue-600 bg-blue-50 font-semibold text-blue-600">点选</button>
-                  <button id="mode-text" type="button" class="{{ seg }} border-gray-200 bg-white">文字</button>
-                  <button id="mode-voice" type="button" class="{{ seg }} border-gray-200 bg-white" title="点一下开始录音，再点一下停止并转成文字">● 语音</button>
+            <!-- The right column is as tall as the cameras (absolute inside a stretched box). -->
+            <div class="relative min-w-0 lg:min-w-[516px] lg:max-w-[640px] lg:flex-1">
+            <div class="flex flex-col gap-4 lg:absolute lg:inset-0">
+              <!-- 对话 (task_chat.js): the user's turns (a click on the head image, typed, spoken) and the robot's
+                   answers and questions, with answers to tap; the target as chosen under it. -->
+              <section id="target-card" class="{{ view }} flex min-h-[18rem] flex-[3] flex-col gap-2.5 px-4 py-3.5">
+                <div class="flex items-center gap-2">
+                  <h2 class="me-auto text-base font-bold text-gray-800">对话</h2>
+                  <button id="btn-target-clear" type="button" class="{{ dock }}" title="清掉目标和对话">清除</button>
                 </div>
-                <form id="target-form" class="flex min-w-60 flex-1 gap-2">
-                  <input id="target-text" type="text" placeholder="在头部画面点一下；或说 / 输入「把右边的水瓶抓起来」、bottle、cup 后发送" class="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50" />
-                  <button id="btn-target-send" type="submit" class="{{ primary }} px-4">发送</button>
-                  <button id="btn-target-clear" type="button" class="{{ button }}" title="回到默认：最近的瓶子">清除</button>
+                <ol id="chat" class="min-h-0 flex-1 space-y-2.5 overflow-y-auto rounded-lg bg-gray-50 p-3" aria-live="polite"></ol>
+                <form id="target-form" class="flex gap-2">
+                  <button id="btn-record" type="button" class="{{ button }} w-24 shrink-0" title="点一下开始说，再点一下停止：说的话直接发给机器人">● 语音</button>
+                  <input id="target-text" type="text" autocomplete="off" placeholder="说点什么，或在左边画面里点一下" class="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50" />
+                  <button id="btn-target-send" type="submit" class="{{ primary }} shrink-0 px-4">发送</button>
                 </form>
-              </div>
-              <p id="voice-state" class="hidden text-xs text-gray-500"></p>
-              <div class="flex flex-wrap items-center gap-2">
-                <span id="target-chosen" class="rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">已选择：—</span>
-                {% if place %}
-                <span class="ms-2 text-xs font-semibold text-gray-500">放置</span>
-                <div class="flex gap-1.5" role="group">
-                  <button id="place-spot" type="button" class="{{ seg }} border-gray-200 bg-white" title="放到在头部画面里点的桌面位置">桌面点</button>
-                  <button id="place-box" type="button" class="{{ seg }} border-gray-200 bg-white" title="放进头部画面里找到的开口朝上的盒子">盒子</button>
+              </section>
+
+              <!-- 任务设置; 抓取摆放: 任务步骤 (Penpot 「抓取摆放 / 电脑（修订）」, 10-10): ① the object, ② where it goes, in
+                   that order, then the start. The step framed in blue is the one a click on the picture sets. -->
+              <section class="{{ view }} shrink-0 space-y-2.5 px-4 py-3.5">
+                <div class="flex items-center gap-2">
+                  <h2 class="me-auto text-base font-bold text-gray-800">任务步骤</h2>
+                  <span class="text-xs text-gray-500">{{ "按顺序选好两步，再开始" if place else "先选好要抓的物体，再开始" }}</span>
                 </div>
-                <div id="click-choice" class="hidden items-center gap-1.5" role="group">
-                  <span class="text-xs font-semibold text-gray-500">点击设置</span>
-                  <button id="click-object" type="button" class="{{ seg }} border-gray-200 bg-white">物体</button>
-                  <button id="click-place" type="button" class="{{ seg }} border-gray-200 bg-white">放置位置</button>
+                {% set step_row = "flex min-h-[2.875rem] items-center gap-2.5 rounded-lg border px-3 py-1.5" %}
+                <div id="step-1" class="{{ step_row }}">
+                  <span id="step-1-mark" class="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white">1</span>
+                  <span class="w-14 shrink-0 text-[13px] font-semibold text-gray-800">抓取物体</span>
+                  <span id="step-1-text" class="min-w-0 flex-1 truncate text-xs"></span>
+                  <button id="step-1-redo" type="button" class="{{ dock }} h-7 px-2.5">重新选</button>
+                </div>
+                {% if place %}
+                <div id="step-2" class="{{ step_row }}">
+                  <span id="step-2-mark" class="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white">2</span>
+                  <span class="w-14 shrink-0 text-[13px] font-semibold text-gray-800">放置位置</span>
+                  <div class="{{ track }} w-36 shrink-0 grid-cols-2" role="group">
+                    <button id="place-spot" type="button" class="{{ seg }} {{ seg_off }}" title="放到在头部画面里点的桌面位置">桌面点</button>
+                    <button id="place-box" type="button" class="{{ seg }} {{ seg_off }}" title="放进头部画面里找到的开口朝上的盒子">盒子</button>
+                  </div>
+                  <span id="step-2-text" class="min-w-0 flex-1 truncate text-xs"></span>
+                  <button id="step-2-redo" type="button" class="{{ dock }} h-7 px-2.5">重新选</button>
                 </div>
                 {% endif %}
-                <span class="ms-2 text-xs font-semibold text-gray-500">手臂</span>
-                <div id="arm-choice" class="flex gap-1.5" role="group">
-                  <button data-arm="auto" type="button" class="{{ seg }} border-gray-200 bg-white">自动</button>
-                  <button data-arm="left" type="button" class="{{ seg }} border-gray-200 bg-white" {{ "disabled title='摆放目前只用右手'" if place }}>左</button>
-                  <button data-arm="right" type="button" class="{{ seg }} border-gray-200 bg-white">右</button>
+                <div class="flex items-center gap-2">
+                  <span class="{{ label }}">手臂</span>
+                  <div id="arm-choice" class="{{ track }} w-48 shrink-0 grid-cols-3" role="group">
+                    <button data-arm="auto" type="button" class="{{ seg }} {{ seg_off }}">自动</button>
+                    <button data-arm="left" type="button" class="{{ seg }} {{ seg_off }}" {{ "disabled title='摆放目前只用右手'" if place }}>左</button>
+                    <button data-arm="right" type="button" class="{{ seg }} {{ seg_off }}">右</button>
+                  </div>
+                  <label class="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs font-medium text-gray-700">
+                    <input id="step-mode" type="checkbox" class="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> 单步
+                  </label>
+                  <button id="btn-start" type="button" class="{{ primary }} min-w-0 flex-1 truncate py-2">{{ "开始抓取摆放" if place else "开始抓取" }}</button>
                 </div>
-                <label class="ms-auto flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
-                  <input id="step-mode" type="checkbox" class="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" /> 单步
-                </label>
-                <button id="btn-start" type="button" class="{{ primary }} min-w-52 py-2.5">确认并开始{{ title }}</button>
-              </div>
-            </section>
+              </section>
+
+              <!-- 任务进度: the steps, top to bottom; the next one, the result and what needs attention under them. -->
+              <section class="{{ view }} flex min-h-[8rem] flex-[1.3] flex-col">
+                <div class="flex items-center justify-between gap-3 px-4 pt-3.5 pb-2">
+                  <h2 class="text-base font-bold text-gray-800">任务进度</h2>
+                  <span class="ms-auto"></span>
+                  <span id="task-state" class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">—</span>
+                  <button id="btn-reset" type="button" class="{{ dock }}">重置流程</button>
+                </div>
+                <ol id="steps" class="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3"></ol>
+                <div class="space-y-2 p-3">
+                  <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-next" type="button" class="{{ primary }} col-span-2 truncate" style="display: none">下一步</button>
+                  </div>
+                  <div id="result-card" class="hidden rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    <div class="flex items-center gap-2"><p class="min-w-0 flex-1"><span class="font-semibold">上次结果：</span><span id="result-text"></span></p>
+                      <button id="btn-new-task" type="button" class="inline-flex shrink-0 rounded-lg border border-emerald-300 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100">新建任务</button></div>
+                  </div>
+                  <div id="problem-card" class="hidden rounded-lg bg-orange-50 px-3 py-2 text-xs text-orange-800">
+                    <span class="font-semibold">需要处理：</span><span id="problem-text"></span>
+                  </div>
+                </div>
+              </section>
+            </div>
+            </div>
           </div>
 
-          <!-- The steps, top to bottom; the next one, the result and what needs attention under them. -->
-          <section class="{{ card }} xl:sticky xl:top-20 xl:max-h-[calc(100dvh-6rem)]">
-            <div class="{{ card_head }}">
-              <h2 class="{{ card_title }}">任务进度</h2>
-              <span id="task-state" class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">—</span>
-            </div>
-            <ol id="steps" class="min-h-0 flex-1 space-y-1 overflow-y-auto p-3"></ol>
-            <div class="space-y-2 border-t border-gray-200 p-3">
-              <button id="btn-next" type="button" class="{{ primary }} w-full" style="display: none">下一步</button>
-              <button id="btn-reset" type="button" class="{{ button }} w-full">重置流程</button>
-              <!-- 任务 · 执行前确认 (design: 04): what, where, which arm, then the run. -->
-              <div id="confirm-card" class="hidden rounded-lg border border-blue-200 bg-white p-3 text-xs text-gray-700">
-                <p class="text-sm font-semibold text-gray-800">执行前确认</p>
-                <dl id="confirm-list" class="mt-2 space-y-1"></dl>
-                <p class="mt-2 text-gray-500">机器人会动：确认周围安全。停止运动 / Esc / 空格 随时可停。</p>
-                <div class="mt-2 grid grid-cols-2 gap-2">
-                  <button id="btn-confirm-back" type="button" class="{{ button }}">返回修改</button>
-                  <button id="btn-confirm-go" type="button" class="{{ primary }}">确认并执行</button>
-                </div>
-              </div>
-              <div id="result-card" class="hidden rounded-lg bg-emerald-50 p-3 text-xs text-emerald-800">
-                <p class="font-semibold">上次结果</p><p id="result-text" class="mt-1"></p>
-                <button id="btn-new-task" type="button" class="mt-2 inline-flex rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100">新建任务</button>
-              </div>
-              <div id="problem-card" class="hidden rounded-lg bg-orange-50 p-3 text-xs text-orange-800">
-                <p class="font-semibold">需要处理</p><p id="problem-text" class="mt-1"></p>
+          <!-- 调试详情 · 回到停靠位并关闭力矩 -->
+          <details class="{{ view }}">
+            <summary class="flex cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm text-gray-600">
+              <span class="me-auto">▸ 调试详情：步骤日志 · 规划图 · 对齐图 · 关节表</span>
+              <button id="btn-dock-off" type="button" class="{{ dock }}">回到停靠位并关闭力矩</button>
+            </summary>
+            <div class="grid gap-4 border-t border-gray-200 p-4 lg:grid-cols-2">
+              <ol id="progress" class="max-h-96 space-y-1 overflow-y-auto font-mono text-xs text-gray-700"></ol>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <figure><img id="plan-image" class="hidden w-full rounded-lg border border-gray-200" alt="规划图" /><figcaption id="plan-empty" class="text-xs text-gray-400">规划图：规划之后出现</figcaption></figure>
+                <figure><img id="align-image" class="hidden w-full rounded-lg border border-gray-200" alt="对齐图" /><figcaption id="align-empty" class="text-xs text-gray-400">对齐图：腕部相机对准之后出现</figcaption></figure>
+                <table class="col-span-full min-w-full text-xs"><tbody id="joints" class="divide-y divide-gray-100 font-mono"></tbody></table>
               </div>
             </div>
-          </section>
+          </details>
         </div>
-
-        <!-- Debug details, folded: the log, the plan and alignment pictures, the joints. -->
-        <details class="group rounded-xl border border-gray-200 bg-white shadow-2xs">
-          <summary class="flex cursor-pointer items-center justify-between px-4 py-3 text-sm text-gray-600">
-            <span>▸ 调试详情：步骤日志 · 规划图 · 对齐图 · 关节表</span>
-          </summary>
-          <div class="grid gap-4 border-t border-gray-200 p-4 lg:grid-cols-2">
-            <ol id="progress" class="max-h-96 space-y-1 overflow-y-auto font-mono text-xs text-gray-700"></ol>
-            <div class="grid gap-3 sm:grid-cols-2">
-              <figure><img id="plan-image" class="hidden w-full rounded-lg border border-gray-200" alt="规划图" /><figcaption id="plan-empty" class="text-xs text-gray-400">规划图：规划之后出现</figcaption></figure>
-              <figure><img id="align-image" class="hidden w-full rounded-lg border border-gray-200" alt="对齐图" /><figcaption id="align-empty" class="text-xs text-gray-400">对齐图：腕部相机对准之后出现</figcaption></figure>
-              <table class="col-span-full min-w-full text-xs"><tbody id="joints" class="divide-y divide-gray-100 font-mono"></tbody></table>
+        <!-- 任务 · 执行前确认 (Penpot 「抓取摆放 / 电脑 · 执行前确认（弹窗）」): what, where, which arm, then the run; a dialog
+             in the middle of the screen over the page, so its buttons are always there to press. -->
+        <div id="confirm-card" class="fixed inset-0 z-50 items-center justify-center bg-gray-900/45 p-4" style="display: none" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+          <div class="w-full max-w-md rounded-xl border border-blue-200 bg-white p-6 text-xs text-gray-700 shadow-xl">
+            <p id="confirm-title" class="text-base font-bold text-gray-800">执行前确认</p>
+            <dl id="confirm-list" class="mt-3 space-y-1.5"></dl>
+            <p class="mt-3 text-gray-500">机器人会动：确认周围安全。停止运动 / Esc / 空格 随时可停。</p>
+            <div class="mt-4 grid grid-cols-2 gap-3">
+              <button id="btn-confirm-back" type="button" class="{{ button }} py-2">返回修改</button>
+              <button id="btn-confirm-go" type="button" class="{{ primary }} py-2">确认并执行</button>
             </div>
           </div>
-        </details>
+        </div>
 {% endblock %}

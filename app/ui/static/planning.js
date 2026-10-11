@@ -125,9 +125,12 @@ async function applyAlgorithm(event) {
   const body = { mode: document.getElementById("algo-mode").value, task: document.getElementById("algo-task").value.trim() || "Pick up the bottle" };
   if (!document.getElementById("dense-row").classList.contains("hidden")) body.densematcher_prior = document.getElementById("algo-dense").value.trim();
   if (!document.getElementById("hog-row").classList.contains("hidden")) body.hog_prior = document.getElementById("algo-hog").value.trim();
-  const response = await fetch(`${GRASP_API}/api/real/algorithms`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  const result = await response.json().catch(() => ({}));
-  notify(response.ok ? `下一次规划用：${MODE_NAMES[body.mode] || body.mode}` : `没有设置成：${result.detail || response.status}`);
+  try {
+    await api("POST", `${GRASP_API}/api/real/algorithms`, body);
+    notify(`下一次规划用：${MODE_NAMES[body.mode] || body.mode}`);
+  } catch (error) {
+    notify(`没有设置成：${error.message}`);
+  }
   poll();
 }
 

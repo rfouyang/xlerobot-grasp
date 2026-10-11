@@ -17,7 +17,6 @@ import torch
 from loguru import logger
 
 from config.perception import PerceptionConfig
-
 from config.settings import use_utf8_output
 
 
@@ -74,8 +73,8 @@ def demo_depth_refine_helper() -> None:
     raw = frame["depth"] * frame["depth_scale"]
     started = time.time()
     refined = helper.refine(frame["color"], raw)
-    logger.info("深度有效 {:.0f}% → {:.0f}%，用时 {:.2f} s（第一次含预热）", 100 * (raw > 0).mean(), 100 * (refined > 0).mean(),
-                time.time() - started)
+    logger.info("深度有效 {:.0f}% → {:.0f}%，用时 {:.2f} s（第一次含预热）", 100 * (raw > 0).mean(),
+                100 * (refined > 0).mean(), time.time() - started)
 
 
 def main() -> None:

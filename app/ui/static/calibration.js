@@ -3,8 +3,9 @@
 "use strict";
 
 const calib = { tab: "charuco", frozen: false, shownAt: null };
-const TAB_ON = "bg-blue-50 text-blue-600";
-const TAB_OFF = "text-gray-600 hover:bg-gray-100";
+// The segmented tabs (as on the keyboard page): the open tab a raised white segment on the grey track.
+const TAB_ON = "border-gray-200 bg-white font-semibold text-blue-600 shadow-sm";
+const TAB_OFF = "border-transparent text-gray-600 hover:bg-gray-200";
 
 function escapeHtml(text) {
   return String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -34,10 +35,10 @@ async function detectLoop(camera) {
         const count = Number(response.headers.get("X-Corners"));
         const error = response.headers.get("X-Error-Px");
         label.textContent = count ? `已检测 ${count}/54 角点${error ? ` · ${error} px` : ""}` : "没看到标定板";
-        label.className = count >= 8 ? "text-emerald-700" : "text-gray-500";
+        label.className = `min-w-0 truncate text-[11px] ${count >= 8 ? "text-emerald-700" : "text-gray-500"}`;
       } else {
         label.textContent = "没有画面";
-        label.className = "text-red-600";
+        label.className = "min-w-0 truncate text-[11px] text-red-600";
       }
     }
     await new Promise((resolve) => setTimeout(resolve, 800));
@@ -72,6 +73,11 @@ async function compareLoop() {
         const old = image.src;
         image.src = URL.createObjectURL(await response.blob());
         if (old.startsWith("blob:")) URL.revokeObjectURL(old);
+        // The depths' captions and the shared colour scale, from the pictures' headers.
+        const valid = response.headers.get("X-Valid");
+        const range = response.headers.get("X-Range");
+        if (valid !== null) document.getElementById(`compare-note-${kind}`).textContent = `有效 ${Math.round(Number(valid) * 100)}%`;
+        if (range) document.getElementById("compare-scale").textContent = `蓝 ${range.split("-")[0]} m → 红 ${range.split("-")[1]} m`;
       }));
       calib.shownAt = new Date();
       document.getElementById("compare-time").textContent = `帧时间 ${calib.shownAt.toLocaleTimeString()}（三张图是同一轮取的，深度最多慢一帧 FFS）`;
@@ -100,11 +106,16 @@ function exportCompare() {
 
 // --- the wrist hand-eye session ---
 
+// A session request (a read without body): the session as it is after it, or null when refused (said on the page).
 async function sessionCall(path, body) {
-  const result = await (body === undefined ? fetch(`/api/calibration/${path}`).then((r) => r.json()) : post(`/api/calibration/${path}`, body));
-  if (result.ok === false) notify(result.error);
-  if (result.poses) renderSession(result);
-  return result;
+  try {
+    const result = await api(body === undefined ? "GET" : "POST", `/api/calibration/${path}`, body);
+    if (result.poses) renderSession(result);
+    return result;
+  } catch (error) {
+    notify(error.message);
+    return null;
+  }
 }
 
 function renderSession(state) {
@@ -142,10 +153,10 @@ App.ready.then(() => {
   document.getElementById("btn-capture").addEventListener("click", async (event) => {
     event.target.disabled = true;
     const result = await sessionCall("capture", {});
-    if (result.pose) notify(result.pose.usable ? `第 ${result.pose.i} 帧：腕部 ${result.pose.wrist_corners} 个角点，头部 ${result.pose.head_corners} 个` : `第 ${result.pose.i} 帧腕部只看到 ${result.pose.wrist_corners} 个角点，不计入；换个角度再采`);
+    if (result && result.pose) notify(result.pose.usable ? `第 ${result.pose.i} 帧：腕部 ${result.pose.wrist_corners} 个角点，头部 ${result.pose.head_corners} 个` : `第 ${result.pose.i} 帧腕部只看到 ${result.pose.wrist_corners} 个角点，不计入；换个角度再采`);
   });
   document.getElementById("btn-solve").addEventListener("click", () => sessionCall("solve", {}));
-  document.getElementById("btn-save").addEventListener("click", async () => { const result = await sessionCall("save", {}); if (result.ok) loadResults(); });
+  document.getElementById("btn-save").addEventListener("click", async () => { const result = await sessionCall("save", {}); if (result) loadResults(); });
   pollSession();
   document.querySelectorAll("[data-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.tab)));
   document.getElementById("btn-freeze").addEventListener("click", (event) => {
@@ -157,3 +168,6 @@ App.ready.then(() => {
   ["head", "left_wrist", "right_wrist"].forEach(detectLoop);
   compareLoop();
 });
+
+// The head depth tile in the camera block: the processed depth (FFS), as on the keyboard and task pages.
+live("depth-image", `${GRASP_API}/api/depth/refined.jpg`, null, depthNote);

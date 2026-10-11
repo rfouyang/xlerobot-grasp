@@ -9,30 +9,15 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from dataclasses import dataclass
 
 import numpy as np
 import trimesh
 import trimesh.transformations as tra
 from loguru import logger
 
+from component.grasp_generation.placed_object import PlacedObject
 from config.planning import GraspConfig, SceneConfig
-
 from config.settings import use_utf8_output
-
-
-@dataclass
-class PlacedObject:
-    name: str
-    label: str
-    # Mesh already moved into the robot's base_link frame.
-    mesh: trimesh.Trimesh
-    # base_link <- mesh file frame: what a simulator needs to put the same object down.
-    pose: np.ndarray
-    file: Path
-    scale: float
-    rgba: tuple
-    mass: float
 
 
 class TabletopScene:
@@ -48,7 +33,8 @@ class TabletopScene:
 
     @property
     def table_pose(self) -> np.ndarray:
-        """Centre of the table box in base_link: level at table_top_z, or along table_plane with its top on the plane."""
+        """Centre of the table box in base_link: level at table_top_z, or along table_plane with its top on
+        the plane."""
         centre_x = self.table_front_x + self.table_size[0] / 2
         if self.table_plane is None:
             pose = tra.translation_matrix([centre_x, 0.0, self.table_top_z - self.table_size[2] / 2])

@@ -1,5 +1,50 @@
 # 当前进度（2026-10-06 晚 23:10 收工）
 
+## 2026-10-11 下午：拔掉机器人 USB 之后
+
+- 相机发烫，机器人的 USB 和电源拔了一夜：看门狗每 20 s 重启一次机器人进程，一夜 1826 次。现在重启失败后
+  等待时间翻倍（10、20、40 s……最多 `RobotServerConfig.RESTART_MAX_WAIT_S` 300 s），成功了就恢复每 5 s 检查一次（`tests/test_supervision.py`）。
+- `launch/stop.sh`：app/main.py 40 s 没退出被强制结束时，原来连它的子进程一起杀，包括机器人进程（手臂有力矩时会掉）。
+  现在只杀它的工作进程，机器人进程留着。
+- 重构后的抓取摆放真机跑通（17:28：放置点离点的位置 0.4 cm，立着检查对，语音和步骤对得上）。
+- `task_execution/service.py`（614 → 约 380 行）拆开：`run_state.py`（RunState：一轮里步骤之间传的东西，重置时换新的）、
+  `plan_step.py`（PlanStep：检测并规划、选手、放到哪）、`align_step.py`（AlignStep：腕部相机对准）、`attempt_log.py`
+  （AttemptLog：评估记录，`tests/test_attempt_log.py`）。TaskRunner 对外的方法不变；页面的规划图、对准图在 `runner.state`。
+- 插回来后每次重启前都会自动挂 USB（`util/usbip_helper.py`）；RealSense 在 Windows 上出现得晚，下一次重启才能挂上，不用手动。
+
+## 2026-10-11（第二轮）：整个项目按 g1-action-recorder 的框架整理（先读这一节和 AGENTS.md）
+
+- component 每块一个 `<名词>_<动作>/service.py`，两个进程各一个门面：`grasp_application.py`（网页进程）、
+  `robot_application.py`（机器人进程，原 `robot/robot_application.py`）。搬家对照：`robot/link.py` → `robot_link/service.py`、
+  `robot/camera_stream.py` → `camera_streaming/service.py`、`robot/keyboard/` → `keyboard_teleop/`（底盘拆成
+  `base_teleop.py`）、`robot/devices.py` → `device_matching/service.py`、`perception/service.py` → `head_perception/`、
+  `perception/preview.py` → `head_preview/service.py`、`planning/` → `grasp_planning/`（`grasp_planning.py` → `service.py`）、
+  `planning/box_placement.py` → `box_placement/service.py`、`calibration/` → `camera_calibration/`（`capture.py` →
+  `service.py`，实时检测 `live_detection.py`）、`system_check/self_check.py` → `system_check/service.py`、
+  `system_check/supervisor.py` → `process_supervision/service.py`、`simulation/` → `grasp_simulation/`、
+  `voice/dialog.py` → `voice_dialog/service.py`。一个模块一个类（数据类各自一个模块，如 `real_scene.py`、`open_box.py`）。
+- 所有接口模块都是模块级 `router`，只调门面；两个进程都注册 `app/api/errors.py`（ValueError 422、FileNotFoundError 404、
+  TaskBusyError 409、CameraStaleError 503、其他 500，都回 `{"detail": 原话}`）。机器人接口的部件用 pydantic `Literal`
+  校验；按关节移动、存位姿、去位姿的错误改成抛异常。力矩的结果（`on`、`away_from_rest`、`error`）还是数据。
+- 页面全部改用 `common.js` 的 `api()`，`post()` 删了。
+- 测试 `tests/test_pages_api.py`：整个网页进程的 app（`create_app()`）、各页接口、以及框架规则（util 不 import
+  component、没有 `create_` 工厂、每个模块有 demo）。
+
+## 2026-10-11：任务页这条线按 g1-action-recorder 的框架整理
+
+- 规则写在 `AGENTS.md`（参照 g1-action-recorder）。
+- 物体抓取 / 抓取摆放用到的代码搬到了：`component/grasp_application.py`（门面，原 `task/task_application.py`）、
+  `component/task_execution/`（原 `component/task/`，`runner.py` → `service.py`，`tasks.py` → `stages.py`，
+  `TaskBusyError` 在 `busy_error.py`）、`component/target_selection/service.py`（原 `perception/target.py`）、
+  `component/place_choice/service.py`（新：放到哪里）、`component/task_chat/`（原 `component/chat/`，一个模块一个类）。
+- 接口：`app/api/task_api.py`（原 `real_grasp_api.py`）和 `voice_api.py` 改成模块级 `router`，只调门面；
+  `app/api/errors.py` 把 ValueError → 422、TaskBusyError → 409、CameraStaleError → 503，回 `{"detail": 原话}`。
+  `/api/real/place_spot` 并进 `/api/real/place`（kind spot + point）；删了 `/api/voice/command`、`/api/target/chat`。
+- 页面：任务页的 JS 拆成 `task.js`（状态、任务步骤、开始和确认）、`task_chat.js`（对话、点选）、`task_voice.js`
+  （录音、语音讲解）；请求用 `common.js` 的 `api()`（出错抛 Error，带服务端原话和状态码）。
+- 测试：`uv run python -m unittest discover -s tests -t .`（替身桌面，不要机器人、模型、GPT）；
+  `uv run ruff check <任务页这条线的文件>`。其余页面（键盘、标定、系统设置、机器人进程）下一轮再按这个框架整理。
+
 ## 2026-10-09 晚：重构后的结构（先读这一节）
 
 **现在只有一个项目**：`xlerobot-grasp`（git 仓库，第一次提交是重构前的基线 `450d2fd`）。xlerobot-teleop 和 xlerobot-ui 两只手真机验证通过后会归档，不再运行。
@@ -12,9 +57,9 @@
   - `app/`：入口、API、页面；
   - `component/`：
     - `robot/`：机器人进程；
-    - `perception/`：头部帧、目标选择 `target.py`、预览 `preview.py`；
+    - `perception/`：头部帧、预览 `preview.py`；`target_selection/`：目标选择（点选、名字、盒子）；`place_choice/`：抓取摆放的放置；
     - `planning/`：arm、arm_choice、grasp_planning、reach_map、desk_guard、box_placement；
-    - `task/`：`runner.py` 步骤机、`tasks.py` 步骤表、`motion.py`、`checks.py`、bridge、wrist_alignment；
+    - `task_execution/`：`service.py` 步骤机、`stages.py` 步骤表、`motion.py`、`checks.py`、bridge、wrist_alignment；`task_chat/`：任务页的对话；门面 `grasp_application.py`；
     - `calibration/`、`system_check/`、`simulation/`、`grasp_generation/`；
   - `config/`：`settings`、`robot`、`perception`、`planning`、`task`、`voice`、`simulation`、`charuco`；
   - `util/`；`model/`（权重）；`data/`（标定会话、深度数据）；`log/`（`grasp_*` / `robot_*`）；`launch/`。
@@ -35,7 +80,7 @@
 - **重构后验证过**：19:56 左手（自动选手）、19:57 右手（手动选）各完整抓一次，瓶子都立着。旧服务已改名为 `_archive_*`。
 - **语音**（任务页「● 语音」）：
   - 浏览器录 16 kHz PCM → `/api/voice/transcribe`（BytePlus ASR，`util/byteplus_asr_helper.py`）→ 文字填进输入框（可以改）；
-  - 点「发送」：中文走 `/api/voice/command`，GPT（`gpt-5-mini`，`OPENAI_API_KEY`）理解出物体、左右、放置，没网时用 `DialogConfig` 的词表；左边 / 右边由 YOLOE 在头部画面里选具体的那个；
+  - 点「发送」：走 `/api/task/chat`（`component/task_chat`），GPT（`gpt-5-mini`，`OPENAI_API_KEY`）调用工具选物体、放置、开始，没网时用 `DialogConfig` 的词表；
   - 回答用 BytePlus TTS 在页面播放（`/api/voice/say`）。
 - **10-09 20:00 之后又做了**（每项都离线验证过，真机运行留到验收）：
   - **HTTPS 8443**：`util/tls_helper.py` 自动生成自签名证书，覆盖局域网 192.168.31.57、Tailscale 100.120.140.36 和 localhost，给 iPad 用麦克风。页面和 wss 都验证过。iPad 访问还需要 Windows 防火墙放行（命令见 refactor_plan 第 7 节）。

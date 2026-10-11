@@ -11,14 +11,13 @@ if str(BASE_DIR) not in sys.path:
 
 import numpy as np
 import trimesh
-from loguru import logger
-
-from config.planning import GraspConfig
-
-from config.settings import PathConfig, use_utf8_output
 from graspgenx.grasp_server import GraspGenXSampler
 from graspgenx.utils.checkpoint_io import load_model_cfg
 from graspgenx.x_grippers import make_sweep_volume_gripper_info
+from loguru import logger
+
+from config.planning import GraspConfig
+from config.settings import PathConfig, use_utf8_output
 
 GRIPPER_TYPES = {"parallel_2f": 0, "revolute_2f": 1, "revolute_3f": 2}
 

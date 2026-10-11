@@ -4,9 +4,10 @@ Planning and execution happen inside the xlerobot-grasp service through MoveItPy
 so no move_group is started here.
 """
 
-from launch import LaunchDescription
 from launch_ros.actions import Node
 from moveit_configs_utils import MoveItConfigsBuilder
+
+from launch import LaunchDescription
 
 
 def generate_launch_description():

@@ -16,42 +16,38 @@ from loguru import logger
 from app.robot_context import robot_context
 from config.settings import use_utf8_output
 
+router = APIRouter()
 
-def create_follow_api() -> APIRouter:
-    router = APIRouter()
+@router.post("/api/follow/arm")
+def arm():
+    """Following is blocked after every stop until this is called (the planner does, before each step)."""
+    response = robot_context.arm_follow()
+    return response
 
-    @router.post("/api/follow/arm")
-    def arm():
-        """Following is blocked after every stop until this is called (the planner does, before each step)."""
-        response = robot_context.arm_follow()
-        return response
-
-    @router.websocket("/ws/follow")
-    async def follow_stream(websocket: WebSocket):
-        """In: {"part": "right_arm", "joints": {shoulder_pan: deg, ..., gripper: 0-100}}; out after each one:
-        {accepted, blocked, torque, present}. The part stops following when the socket closes."""
-        await websocket.accept()
-        parts = set()
-        try:
-            while True:
-                message = await websocket.receive_json()
-                parts.add(message["part"])
-                await websocket.send_json(robot_context.follow(message["part"], message["joints"]))
-        except WebSocketDisconnect:
-            # The planner finished or went away; the arm holds where it is.
-            pass
-        finally:
-            for part in parts:
-                robot_context.end_follow(part)
-
-    return router
+@router.websocket("/ws/follow")
+async def follow_stream(websocket: WebSocket):
+    """In: {"part": "right_arm", "joints": {shoulder_pan: deg, ..., gripper: 0-100}}; out after each one:
+    {accepted, blocked, torque, present}. The part stops following when the socket closes."""
+    await websocket.accept()
+    parts = set()
+    try:
+        while True:
+            message = await websocket.receive_json()
+            parts.add(message["part"])
+            await websocket.send_json(robot_context.follow(message["part"], message["joints"]))
+    except WebSocketDisconnect:
+        # The planner finished or went away; the arm holds where it is.
+        pass
+    finally:
+        for part in parts:
+            robot_context.end_follow(part)
 
 
 def demo_follow_api() -> None:
     """Real robot, no torque: a follow request is refused (no torque), arming works."""
     robot_context.start()
     app = FastAPI()
-    app.include_router(create_follow_api())
+    app.include_router(router)
     client = TestClient(app)
     logger.info("/api/follow/arm：{}", client.post("/api/follow/arm").json())
     with client.websocket_connect("/ws/follow") as websocket:

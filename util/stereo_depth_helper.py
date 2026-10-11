@@ -17,7 +17,6 @@ import torch
 from loguru import logger
 
 from config.perception import HeadCameraConfig, PerceptionConfig
-
 from config.settings import use_utf8_output
 
 
@@ -45,8 +44,8 @@ class StereoDepthHelper:
     def disparity(self, left: np.ndarray, right: np.ndarray) -> np.ndarray:
         """left, right (H, W) uint8 infrared -> disparity (H, W) float32 px, in the left image."""
         height, width = left.shape
-        images = [torch.from_numpy(np.repeat(image[..., None], 3, axis=2)).to(self.device).float()[None].permute(0, 3, 1, 2)
-                  for image in (left, right)]
+        images = [torch.from_numpy(np.repeat(image[..., None], 3, axis=2)).to(self.device).float()[None]
+                  .permute(0, 3, 1, 2) for image in (left, right)]
         padder = self.padder(images[0].shape, divis_by=32, force_square=False)
         images = padder.pad(*images)
         with self.lock, torch.no_grad(), torch.amp.autocast("cuda", enabled=True, dtype=torch.float16):
@@ -62,14 +61,16 @@ class StereoDepthHelper:
         # A pixel whose match would fall off the right image's left edge has no partner.
         valid = (disparity > 0) & (columns - disparity >= 0)
         depth_ir = np.zeros_like(disparity)
-        depth_ir[valid] = frame["K_ir"][0, 0] * float(frame["baseline_m"]) / disparity[valid] / HeadCameraConfig.STEREO_DEPTH_SCALE
+        depth_ir[valid] = (frame["K_ir"][0, 0] * float(frame["baseline_m"]) / disparity[valid]
+                           / HeadCameraConfig.STEREO_DEPTH_SCALE)
         near, far = PerceptionConfig.STEREO_RANGE_M
         depth_ir[(depth_ir < near) | (depth_ir > far)] = 0.0
         depth = self.to_color(depth_ir, frame["K_ir"], frame["color_from_ir"], frame["K"], frame["color"].shape[:2])
         return depth
 
     @staticmethod
-    def to_color(depth_ir: np.ndarray, k_ir: np.ndarray, color_from_ir: np.ndarray, k_color: np.ndarray, shape: tuple) -> np.ndarray:
+    def to_color(depth_ir: np.ndarray, k_ir: np.ndarray, color_from_ir: np.ndarray, k_color: np.ndarray,
+                 shape: tuple) -> np.ndarray:
         """Each infrared pixel's point into the colour camera, the nearest kept where several land on one pixel. Each
         point fills the four pixels around where it lands: the two cameras see the desk at about the same scale, so a
         single pixel each would leave a sieve of holes."""
@@ -84,7 +85,8 @@ class StereoDepthHelper:
         for column in (np.floor(u), np.ceil(u)):
             for row in (np.floor(v), np.ceil(v)):
                 inside = (column >= 0) & (column < width) & (row >= 0) & (row < height) & (z > 0)
-                np.minimum.at(nearest, (row[inside] * width + column[inside]).astype(np.int64), z[inside].astype(np.float32))
+                np.minimum.at(nearest, (row[inside] * width + column[inside]).astype(np.int64),
+                              z[inside].astype(np.float32))
         nearest[~np.isfinite(nearest)] = 0.0
         depth = nearest.reshape(height, width)
         return depth
@@ -102,8 +104,9 @@ def demo_stereo_depth_helper() -> None:
         depth = helper.depth(frame)
         seconds = time.time() - started
     both = (sensor > 0) & (depth > 0)
-    logger.info("FFS 深度有效 {:.0f}%（传感器 {:.0f}%），两者都有处差值中位 {:+.1f} mm，用时 {:.3f} s（预热后）", 100 * (depth > 0).mean(),
-                100 * (sensor > 0).mean(), 1000 * float(np.median(depth[both] - sensor[both])), seconds)
+    logger.info("FFS 深度有效 {:.0f}%（传感器 {:.0f}%），两者都有处差值中位 {:+.1f} mm，用时 {:.3f} s（预热后）",
+                100 * (depth > 0).mean(), 100 * (sensor > 0).mean(),
+                1000 * float(np.median(depth[both] - sensor[both])), seconds)
 
 
 def main() -> None:

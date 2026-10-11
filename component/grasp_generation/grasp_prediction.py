@@ -9,25 +9,17 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from dataclasses import dataclass
 
 import numpy as np
 import trimesh
 from loguru import logger
 
+from component.grasp_generation.grasp_candidate import GraspCandidate
 from component.grasp_generation.gripper_description import GripperDescription
 from component.grasp_generation.tabletop_scene import TabletopScene
 from config.planning import GripperConfig
 from config.settings import use_utf8_output
 from util.grasp_helper import GraspHelper
-
-
-@dataclass
-class GraspCandidate:
-    index: int
-    # base_link <- canonical gripper frame (+Z approach, +X closing).
-    pose: np.ndarray
-    score: float
 
 
 class GraspPrediction:
@@ -37,13 +29,14 @@ class GraspPrediction:
         self.helper = GraspHelper(self.gripper_config, name=GripperConfig.NAME)
         # A few hundred vertices of the open gripper are enough to tell whether it dips into the table.
         coll_mesh = trimesh.load(GripperConfig.DIR / "coll_mesh.obj", force="mesh")
-        self.gripper_points = np.asarray(trimesh.sample.sample_surface(coll_mesh, kwargs.get("gripper_points", 400), seed=0)[0])
+        self.gripper_points = np.asarray(trimesh.sample.sample_surface(coll_mesh, kwargs.get("gripper_points", 400),
+                                                                       seed=0)[0])
 
     def predict(self, points: np.ndarray, scene: TabletopScene) -> list[GraspCandidate]:
         """points in base_link -> candidates in base_link, best first, none of them through the table."""
         poses, scores = self.helper.predict(points)
         candidates = []
-        for pose, score in zip(poses, scores):
+        for pose, score in zip(poses, scores, strict=False):
             gripper_points = self.gripper_points @ pose[:3, :3].T + pose[:3, 3]
             if not scene.below_table(gripper_points):
                 candidates.append(GraspCandidate(index=len(candidates), pose=pose, score=float(score)))

@@ -3,7 +3,6 @@
    out), how the semantic / demo methods re-ranked them, what was chosen and why others were refused; the algorithm
    choice for the next plan; the wrist alignment; the human demo video (processed in xlerobot-demo). #}
 {% block title %}抓取规划{% endblock %}
-{% block subtitle %}研究抓哪里最合适：GraspGenX 生成 SO-101 候选，语义 / 人的示范只给候选重新排序，可达和碰撞仍由 IK 与桌面守卫决定。{% endblock %}
 {% block scripts %}<script src="/static/ui/planning.js?v={{ asset_version('planning.js') }}" defer></script>{% endblock %}
 {% block content %}
         <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">

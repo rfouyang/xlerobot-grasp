@@ -35,10 +35,12 @@ class AlertConfig:
 
 
 class ByteplusTtsConfig:
-    """BytePlus Seed Speech 2.0, as in g1-action-recorder (the user prefers it to Windows' voices). The key is in .env."""
+    """BytePlus Seed Speech 2.0, as in g1-action-recorder (the user prefers it to Windows' voices).
+    The key is in .env."""
 
     API_KEY = os.getenv("BYTEPLUS_API_KEY", "")
-    URL = os.getenv("BYTEPLUS_API_BASE_URL", "https://voice.ap-southeast-1.bytepluses.com") + "/api/v3/tts/unidirectional"
+    URL = (os.getenv("BYTEPLUS_API_BASE_URL", "https://voice.ap-southeast-1.bytepluses.com")
+           + "/api/v3/tts/unidirectional")
     RESOURCE_ID = os.getenv("BYTEPLUS_TTS_RESOURCE_ID", "seed-tts-2.0")
     USER_ID = "xlerobot-grasp"
     TIMEOUT_S = 30.0
@@ -77,7 +79,23 @@ class DialogConfig:
     TIMEOUT_S = 20.0
     # The word table: Chinese names -> YOLOE prompts (YOLOE's text encoder is English).
     # 水平: the ASR hears 水瓶 as it (2026-10-09).
-    OBJECT_WORDS = {"水瓶": "bottle", "水平": "bottle", "瓶子": "bottle", "瓶": "bottle", "喷雾": "spray bottle", "杯子": "cup", "杯": "cup",
-                    "罐子": "can", "易拉罐": "can", "罐": "can", "盒子": "box", "碗": "bowl", "香蕉": "banana", "苹果": "apple",
-                    "橙子": "orange", "手机": "cell phone", "遥控器": "remote", "书": "book", "笔": "pen"}
+    OBJECT_WORDS = {"水瓶": "bottle", "水平": "bottle", "瓶子": "bottle", "瓶": "bottle", "喷雾": "spray bottle",
+                    "杯子": "cup", "杯": "cup", "罐子": "can", "易拉罐": "can", "罐": "can", "盒子": "box",
+                    "碗": "bowl", "香蕉": "banana", "苹果": "apple", "橙子": "orange", "手机": "cell phone",
+                    "遥控器": "remote", "书": "book", "笔": "pen"}
     SIDE_WORDS = {"左": "left", "右": "right"}
+    # How the robot names a YOLOE prompt in its Chinese replies (others as they are).
+    SAY_NAMES = {"bottle": "瓶子", "spray bottle": "喷雾瓶", "cup": "杯子", "can": "罐子", "box": "盒子", "bowl": "碗",
+                 "banana": "香蕉", "apple": "苹果", "orange": "橙子", "cell phone": "手机", "remote": "遥控器",
+                 "book": "书", "pen": "笔"}
+    # The chat on the task pages: this many earlier turns go to GPT with the new one.
+    CHAT_TURNS = 8
+    # The task chat's GPT with tools (component/chat): "low" reasoning answers a tool call in ~1.5 s ("minimal" ~1 s
+    # but guessed numbers nobody said, the default ~3 s; 2026-10-10); at most this many tool rounds a turn.
+    CHAT_EFFORT = os.getenv("OPENAI_CHAT_EFFORT", "low")
+    CHAT_STEPS = 3
+    # A start in the same turn as the pick needs one of these words (抓左边那个，直接抓); after the question whether
+    # the target is right, an agreement is enough.
+    START_WORDS = ("开始", "直接", "马上", "立刻", "现在就", "抓吧", "动手", "去抓", "go")
+    # Said to the chat, these stop the robot at once, without GPT.
+    STOP_WORDS = ("停", "别动", "等一下", "等等", "stop")

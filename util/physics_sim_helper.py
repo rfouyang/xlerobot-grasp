@@ -10,9 +10,6 @@ if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
 # First: it sets MUJOCO_GL / PYOPENGL_PLATFORM, which mujoco reads when imported.
-from config.settings import PathConfig, use_utf8_output
-from config.simulation import SimConfig
-
 import xml.etree.ElementTree as ET
 
 import coacd
@@ -23,6 +20,9 @@ import trimesh
 import trimesh.transformations as tra
 import yourdfpy
 from loguru import logger
+
+from config.settings import PathConfig, use_utf8_output
+from config.simulation import SimConfig
 
 
 def fmt(values) -> str:
@@ -39,7 +39,8 @@ class PhysicsSimHelper:
     servos follow ros2_control's commands.
     """
 
-    def __init__(self, urdf_path: Path = PathConfig.URDF_PATH, package_root: Path = PathConfig.ROS_SRC_DIR, **kwargs) -> None:
+    def __init__(self, urdf_path: Path = PathConfig.URDF_PATH, package_root: Path = PathConfig.ROS_SRC_DIR,
+                 **kwargs) -> None:
         self.urdf = yourdfpy.URDF.load(str(urdf_path), load_meshes=False, build_scene_graph=False)
         self.package_root = package_root
         self.cache_dir = kwargs.get("cache_dir", SimConfig.CACHE_DIR)
@@ -55,7 +56,8 @@ class PhysicsSimHelper:
     # --- building ---
 
     def build(self, boxes: list[dict], objects: list[dict], cameras: dict[str, tuple]) -> None:
-        """boxes: {name, size, pose, rgba}; objects: {name, file, scale, pose, mass}; cameras: name -> (position, target)."""
+        """boxes: {name, size, pose, rgba}; objects: {name, file, scale, pose, mass};
+        cameras: name -> (position, target)."""
         self.meshes = {}
         self.assets = []
         root = ET.Element("mujoco", model="xlerobot_sim")
@@ -79,7 +81,8 @@ class PhysicsSimHelper:
         world = ET.SubElement(root, "worldbody")
         ET.SubElement(world, "light", pos="0.6 -0.8 2.5", dir="-0.2 0.3 -1", diffuse="0.8 0.8 0.8", castshadow="true")
         ET.SubElement(world, "light", pos="-1 1 2.5", dir="0.4 -0.4 -1", diffuse="0.35 0.35 0.35", castshadow="false")
-        ET.SubElement(world, "geom", name="floor", type="plane", size="3 3 0.05", material="floor_mat", **{"class": "world"})
+        ET.SubElement(world, "geom", name="floor", type="plane", size="3 3 0.05", material="floor_mat",
+                      **{"class": "world"})
         for box in boxes:
             pose = box["pose"]
             ET.SubElement(world, "geom", name=box["name"], type="box", size=fmt(np.array(box["size"]) / 2),
@@ -113,7 +116,8 @@ class PhysicsSimHelper:
         if link.inertial is not None and link.inertial.mass > 0:
             inertia = link.inertial.inertia
             ET.SubElement(parent, "inertial", pos=fmt(link.inertial.origin[:3, 3]), mass=str(link.inertial.mass),
-                          fullinertia=fmt([inertia[0, 0], inertia[1, 1], inertia[2, 2], inertia[0, 1], inertia[0, 2], inertia[1, 2]]))
+                          fullinertia=fmt([inertia[0, 0], inertia[1, 1], inertia[2, 2], inertia[0, 1], inertia[0, 2],
+                                           inertia[1, 2]]))
         for visual in link.visuals:
             self.add_geom(parent, visual, "visual", self.visual_color(visual))
         geom_class = "grip" if link_name in self.grip_links else "robot"

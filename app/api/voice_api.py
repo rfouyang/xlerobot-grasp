@@ -1,4 +1,5 @@
-"""任务页的语音接口：录音转文字（BytePlus ASR），一句指令选目标（GPT 理解，词表兜底），回答说出来（BytePlus TTS）。"""
+"""任务页的对话和语音接口：一轮对话（GPT 理解，词表兜底），页面自己选了之后的下一句，录音转文字（BytePlus ASR），
+回答说出来（BytePlus TTS），以及哪一页在说话。"""
 
 from __future__ import annotations
 
@@ -9,120 +10,105 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-import io
-import wave
+import asyncio
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Request, Response
 from loguru import logger
 from pydantic import BaseModel
 
+from app.context import grasp_context
 from config.settings import use_utf8_output
-from config.voice import ByteplusAsrConfig, ByteplusTtsConfig
+
+router = APIRouter(tags=["voice"])
 
 
-class CommandRequest(BaseModel):
+class ChatRequest(BaseModel):
     text: str
+    # The conversation before this turn: {"role": "user" / "robot", "text"}.
+    history: list[dict] = []
+    # What the robot last asked for: "target" (which object), "place" (where to) or "confirm" (is it all right).
+    awaiting: str = "target"
+    # Which page's chat: "pick" (物体抓取) or "place" (抓取摆放).
+    task: str = "pick"
+
+
+class NextRequest(BaseModel):
+    task: str = "pick"
 
 
 class SayRequest(BaseModel):
     text: str
 
 
-def wav(pcm: bytes, rate: int) -> bytes:
-    buffer = io.BytesIO()
-    with wave.open(buffer, "wb") as out:
-        out.setnchannels(1)
-        out.setsampwidth(2)
-        out.setframerate(rate)
-        out.writeframes(pcm)
-    return buffer.getvalue()
+class SpeakerRequest(BaseModel):
+    # A page's own random id (made once per page load).
+    client: str
 
 
-def create_voice_api() -> APIRouter:
-    router = APIRouter()
-    helpers: dict = {}
+@router.post("/api/task/chat")
+def chat_turn(request: ChatRequest) -> dict:
+    """One turn of a task page's chat; every reply says what it waits for next (awaiting).
+    Plain def: a worker thread."""
+    result = grasp_context.chat_turn(request.task, request.text, request.history, request.awaiting)
+    return result
 
-    def helper(name: str):
-        if name not in helpers:
-            if name == "asr":
-                from util.byteplus_asr_helper import ByteplusAsrHelper
 
-                helpers[name] = ByteplusAsrHelper()
-            elif name == "tts":
-                from util.byteplus_tts_helper import ByteplusTtsHelper
+@router.post("/api/task/next")
+def chat_next(request: NextRequest) -> dict:
+    """What a task page's chat says after the page itself chose (a click, a tapped answer)."""
+    result = grasp_context.chat_next(request.task)
+    return result
 
-                helpers[name] = ByteplusTtsHelper()
-            else:
-                from component.voice.dialog import VoiceDialog
 
-                helpers[name] = VoiceDialog()
-        return helpers[name]
+@router.post("/api/voice/transcribe")
+async def transcribe(request: Request) -> dict:
+    """The body: the page's recording, 16 kHz mono int16 PCM."""
+    pcm = await request.body()
+    result = await asyncio.to_thread(grasp_context.transcribe, pcm)
+    return result
 
-    @router.post("/api/voice/transcribe")
-    async def transcribe(request: Request):
-        """The body: the page's recording, 16 kHz mono int16 PCM."""
-        import asyncio
 
-        pcm = await request.body()
-        if len(pcm) < ByteplusAsrConfig.SAMPLE_RATE * 2 * 0.3:
-            response = {"ok": False, "error": "录音太短"}
-            return response
-        try:
-            text = await asyncio.to_thread(helper("asr").transcribe, pcm)
-        except Exception as error:
-            logger.warning("语音识别失败：{}", error)
-            response = {"ok": False, "error": f"语音识别失败：{error}"}
-            return response
-        response = {"ok": bool(text), "text": text, "seconds": round(len(pcm) / 2 / ByteplusAsrConfig.SAMPLE_RATE, 1),
-                    **({} if text else {"error": "没听清，请再说一次"})}
-        return response
+@router.post("/api/voice/say")
+def say(request: SayRequest) -> Response:
+    """The reply as WAV for the page to play."""
+    wav = grasp_context.speech(request.text)
+    response = Response(content=wav, media_type="audio/wav", headers={"Cache-Control": "no-store"})
+    return response
 
-    @router.post("/api/voice/command")
-    def command(request: CommandRequest):
-        """One instruction: understood, then the target chosen (by name, and side when it says one)."""
-        from app.context import grasp_context
 
-        understood = helper("dialog").understand(request.text)
-        if not understood["object"]:
-            response = {"ok": False, "understood": understood, "reply": understood["reply"], "error": "没听出要抓什么"}
-            return response
-        target = grasp_context.real.set_target(understood["object"], None, False, understood["side"])
-        reply = understood["reply"] if target.get("ok") else f"没找到{understood['object']}，请在画面里点一下它。"
-        response = {"ok": bool(target.get("ok")), "understood": understood, "target": target, "reply": reply,
-                    **({} if target.get("ok") else {"error": target.get("error")})}
-        return response
+@router.post("/api/voice/speaker")
+def claim_speaker(request: SpeakerRequest) -> dict:
+    result = grasp_context.claim_speaker(request.client)
+    return result
 
-    @router.post("/api/voice/say")
-    def say(request: SayRequest):
-        """The reply as WAV for the page to play."""
-        text = request.text.strip()[:200]
-        if not text:
-            raise HTTPException(status_code=400, detail="没有要说的")
-        try:
-            pcm = helper("tts").synthesize(text, voice=ByteplusTtsConfig.REPLY_VOICE)
-        except Exception as error:
-            raise HTTPException(status_code=503, detail=f"语音合成失败：{error}")
-        response = Response(content=wav(pcm, ByteplusTtsConfig.SAMPLE_RATE), media_type="audio/wav", headers={"Cache-Control": "no-store"})
-        return response
 
-    return router
+@router.get("/api/voice/speaker")
+def current_speaker() -> dict:
+    result = {"client": grasp_context.speaker_client}
+    return result
 
 
 def demo_voice_api() -> None:
-    """Online: the reply spoken, then recognised back through the transcribe endpoint."""
+    """Online (BytePlus): the reply spoken, then recognised back through the transcribe endpoint."""
+    import io
+    import wave
+
     import numpy as np
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
+    from config.voice import ByteplusAsrConfig, ByteplusTtsConfig
+
     app = FastAPI()
-    app.include_router(create_voice_api())
+    app.include_router(router)
     client = TestClient(app)
     spoken = client.post("/api/voice/say", json={"text": "抓右边的水瓶"})
     with wave.open(io.BytesIO(spoken.content)) as clip:
         pcm24 = np.frombuffer(clip.readframes(clip.getnframes()), np.int16)
     times = np.arange(0, len(pcm24) / ByteplusTtsConfig.SAMPLE_RATE, 1 / ByteplusAsrConfig.SAMPLE_RATE)
     pcm16 = np.interp(times, np.arange(len(pcm24)) / ByteplusTtsConfig.SAMPLE_RATE, pcm24).astype(np.int16).tobytes()
-    logger.info("say {} 字节 → transcribe {}", len(spoken.content), client.post("/api/voice/transcribe", content=pcm16).json())
+    logger.info("say {} 字节 → transcribe {}", len(spoken.content),
+                client.post("/api/voice/transcribe", content=pcm16).json())
 
 
 def main() -> None:

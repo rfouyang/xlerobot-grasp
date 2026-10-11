@@ -45,3 +45,17 @@ clip = { git = "https://github.com/ultralytics/CLIP.git" }
 name = "pytorch-cu124"
 url = "https://download.pytorch.org/whl/cu124"
 explicit = true
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+# Every module puts the project root on sys.path before its own imports, so it runs from an IDE right-click.
+ignore = ["E402"]

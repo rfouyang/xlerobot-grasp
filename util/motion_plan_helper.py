@@ -16,15 +16,14 @@ import numpy as np
 import torch
 import trimesh.transformations as tra
 import yaml
-from loguru import logger
-
-from config.planning import MotionConfig
-
-from config.settings import PathConfig, use_utf8_output
 from curobo.motion_planner import MotionPlanner, MotionPlannerCfg
 from curobo.robot_builder import RobotBuilder
 from curobo.scene import Cuboid, Scene
 from curobo.types import GoalToolPose, JointState, Pose, ToolPoseCriteria
+from loguru import logger
+
+from config.planning import MotionConfig
+from config.settings import PathConfig, use_utf8_output
 
 # cuRobo logs every kernel compile and buffer swap at INFO.
 logging.getLogger("curobo").setLevel(logging.WARNING)
@@ -45,14 +44,16 @@ class MotionPlanHelper:
     x axis is the jaw's closing direction, that is the one rotation an antipodal grasp tolerates.
     """
 
-    def __init__(self, robot_config: Path = MotionConfig.ROBOT_CONFIG, tool_frame: str = MotionConfig.TOOL_FRAME, **kwargs) -> None:
+    def __init__(self, robot_config: Path = MotionConfig.ROBOT_CONFIG, tool_frame: str = MotionConfig.TOOL_FRAME,
+                 **kwargs) -> None:
         config = MotionPlannerCfg.create(robot=str(robot_config), scene_model={"cuboid": {}},
                                          collision_cache={"cuboid": kwargs.get("max_cuboids", 8)},
                                          num_ik_seeds=kwargs.get("num_ik_seeds", 64))
         self.planner = MotionPlanner(config)
         self.tool_frame = tool_frame
         self.contact_links = kwargs.get("contact_links", MotionConfig.CONTACT_LINKS)
-        self.relaxed = ToolPoseCriteria(terminal_pose_axes_weight_factor=list(MotionConfig.POSE_AXES_WEIGHT), project_distance_to_goal=True)
+        self.relaxed = ToolPoseCriteria(terminal_pose_axes_weight_factor=list(MotionConfig.POSE_AXES_WEIGHT),
+                                        project_distance_to_goal=True)
 
     @property
     def joint_names(self) -> list[str]:
@@ -85,7 +86,8 @@ class MotionPlanHelper:
         pose[:3, 3] = link.position[0].cpu().numpy()
         return pose
 
-    def plan_grasp(self, start: np.ndarray, grasp: np.ndarray, approach_distance: float, lift_height: float) -> dict[str, JointTrajectory] | None:
+    def plan_grasp(self, start: np.ndarray, grasp: np.ndarray, approach_distance: float,
+                   lift_height: float) -> dict[str, JointTrajectory] | None:
         """start -> backed off along the tool's approach axis -> in to the grasp -> straight up; None when a
         segment fails.
 
@@ -190,7 +192,8 @@ def demo_plan_grasp() -> None:
     logger.info("FK 位置误差 {:.4f} m", np.linalg.norm(reached[:3, 3] - target[:3, 3]))
     segments = helper.plan_grasp(start, reached, approach_distance=0.05, lift_height=0.08)
     for name, segment in segments.items():
-        logger.info("{}：{} 点，dt {}s，终点 {}", name, len(segment.positions), segment.dt, np.round(segment.positions[-1], 3))
+        logger.info("{}：{} 点，dt {}s，终点 {}", name, len(segment.positions), segment.dt,
+                    np.round(segment.positions[-1], 3))
 
 
 def main() -> None:

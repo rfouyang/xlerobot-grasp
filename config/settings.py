@@ -11,7 +11,8 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-# graspgenx clones its weights at import time when this is unset; they live in the project's model/ (PathConfig.MODEL_DIR).
+# graspgenx clones its weights at import time when this is unset;
+# they live in the project's model/ (PathConfig.MODEL_DIR).
 os.environ.setdefault("GRASPGENX_CHECKPOINT_DIR", str(BASE_DIR / "model" / "graspgenx"))
 # WSL runs with mirrored networking, where DDS discovery breaks; ROS 2 goes through the Zenoh router instead.
 os.environ.setdefault("RMW_IMPLEMENTATION", "rmw_zenoh_cpp")
@@ -87,11 +88,25 @@ class RobotServerConfig:
     STATE_PUSH_INTERVAL_S = 0.1
     URL = f"http://{HOST}:{PORT}"
     CONNECT_TIMEOUT_S = 3.0
-    # app/supervisor.py: started from app/main.py; healthy when /api/status answers; restarted after this many failed
-    # checks in a row (one every CHECK_S).
+    # component/process_supervision: started from app/main.py; healthy when /api/status answers; restarted after this
+    # many failed checks in a row (one every CHECK_S). A restart that fails (USB unplugged, say) is tried again after a
+    # wait that doubles up to RESTART_MAX_WAIT_S, not every 20 s all night.
     START_TIMEOUT_S = 90.0
     CHECK_S = 5.0
     RESTART_AFTER_FAILS = 3
+    RESTART_MAX_WAIT_S = 300.0
+
+
+class UsbConfig:
+    """The robot's USB devices, passed from Windows into WSL by usbipd-win (util/usbip_helper.py, at app/main.py's
+    start). Sharing them (bind) needs an administrator once (launch/attach_usb.ps1); attaching does not."""
+
+    USBIPD = Path("/mnt/c/Program Files/usbipd-win/usbipd.exe")
+    # VID:PID -> (what it is, how many); attached in this order, the RealSense last (it sometimes needs a moment).
+    DEVICES = {"1a86:55d3": ("电机总线（串口）", 2), "0c45:64ab": ("腕部相机（UVC）", 2),
+               "8086:0ad3": ("头部 RealSense D415", 1)}
+    # After each attach, before the next (the RealSense fails with "Set Address Failed" when rushed).
+    SETTLE_S = 1.0
 
 
 class BringupConfig:

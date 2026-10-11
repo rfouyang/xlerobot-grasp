@@ -26,32 +26,29 @@ class SelectRequest(BaseModel):
     index: int
 
 
-def create_grasp_generation_api() -> APIRouter:
-    router = APIRouter()
+router = APIRouter()
 
-    @router.get("/api/objects")
-    def objects():
-        response = grasp_context.objects()
-        return response
+@router.get("/api/objects")
+def objects():
+    response = grasp_context.objects()
+    return response
 
-    @router.post("/api/grasps")
-    def generate(request: GenerateRequest):
-        response = grasp_context.generate_grasps(request.object)
-        return response
+@router.post("/api/grasps")
+def generate(request: GenerateRequest):
+    response = grasp_context.generate_grasps(request.object)
+    return response
 
-    @router.post("/api/grasps/select")
-    def select(request: SelectRequest):
-        response = grasp_context.select_grasp(request.index)
-        return response
-
-    return router
+@router.post("/api/grasps/select")
+def select(request: SelectRequest):
+    response = grasp_context.select_grasp(request.index)
+    return response
 
 
 def demo_grasp_generation_api() -> None:
     """Needs the bringup launch; starts the application (and its 3D view) in-process."""
     grasp_context.start()
     app = FastAPI()
-    app.include_router(create_grasp_generation_api())
+    app.include_router(router)
     client = TestClient(app)
     logger.info("/api/objects：{}", client.get("/api/objects").json())
     result = client.post("/api/grasps", json={"object": "coke_can"}).json()

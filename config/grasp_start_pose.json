@@ -1,33 +1,27 @@
 {
-  "recorded": "2026-10-05 22:24:21",
+  "recorded": "2026-10-09 22:06:46",
   "robot": "xlerobot_smallcircle",
-  "note": "start pose for grasping, set by the user with the teleop page; lerobot degrees (gripper 0-100)",
-  "torque_at_recording": {
-    "left_arm": true,
-    "right_arm": true,
-    "head": true,
-    "base": true
-  },
+  "note": "joint positions in lerobot degrees (gripper 0-100), set by the user on the keyboard page",
   "pose": {
     "left_arm": {
       "shoulder_pan": -0.31,
-      "shoulder_lift": -86.02,
+      "shoulder_lift": -89.19,
       "elbow_flex": 96.84,
-      "wrist_flex": 2.2,
-      "wrist_roll": -4.26,
-      "gripper": 1.15
+      "wrist_flex": 1.05,
+      "wrist_roll": -0.31,
+      "gripper": 0.61
     },
     "right_arm": {
-      "shoulder_pan": -2.29,
-      "shoulder_lift": -91.34,
-      "elbow_flex": 96.18,
-      "wrist_flex": -3.38,
-      "wrist_roll": 6.2,
-      "gripper": 1.21
+      "shoulder_pan": -0.62,
+      "shoulder_lift": -90.2,
+      "elbow_flex": 96.26,
+      "wrist_flex": -0.04,
+      "wrist_roll": 0.22,
+      "gripper": 0.47
     },
     "head": {
-      "head_motor_1": -3.25,
-      "head_motor_2": 55.16
+      "head_motor_1": -0.44,
+      "head_motor_2": 59.47
     }
   }
 }

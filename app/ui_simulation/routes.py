@@ -23,22 +23,19 @@ UI_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=UI_DIR / "templates")
 
 
-def create_ui_grasp() -> APIRouter:
-    router = APIRouter()
+router = APIRouter()
 
-    @router.get("/")
-    def index(request: Request):
-        """Everything else arrives through /api and the WebSocket; the page only needs the viewer port."""
-        page = templates.TemplateResponse(request, "index.html", {"viewer_port": grasp_context.viewer_port})
-        return page
+@router.get("/")
+def index(request: Request):
+    """Everything else arrives through /api and the WebSocket; the page only needs the viewer port."""
+    page = templates.TemplateResponse(request, "index.html", {"viewer_port": grasp_context.viewer_port})
+    return page
 
-    @router.get("/favicon.ico")
-    def favicon():
-        """Browsers ask for it on every load; an empty answer keeps a 404 out of the log."""
-        response = Response(status_code=204)
-        return response
-
-    return router
+@router.get("/favicon.ico")
+def favicon():
+    """Browsers ask for it on every load; an empty answer keeps a 404 out of the log."""
+    response = Response(status_code=204)
+    return response
 
 
 def mount_ui_static(app: FastAPI) -> None:
@@ -51,7 +48,7 @@ def mount_ui_static(app: FastAPI) -> None:
 
 def demo_ui_grasp() -> None:
     app = FastAPI()
-    app.include_router(create_ui_grasp())
+    app.include_router(router)
     mount_ui_static(app)
     client = TestClient(app)
     page = client.get("/")

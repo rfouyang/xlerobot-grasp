@@ -1,27 +1,27 @@
 {
-  "recorded": "2026-10-05 21:47:17",
+  "recorded": "2026-10-09 22:08:11",
   "robot": "xlerobot_smallcircle",
-  "note": "joint positions in lerobot degrees (gripper 0-100), set by hand by the user",
+  "note": "joint positions in lerobot degrees (gripper 0-100), set by the user on the keyboard page",
   "pose": {
     "left_arm": {
       "shoulder_pan": -0.31,
-      "shoulder_lift": -86.9,
-      "elbow_flex": 97.1,
-      "wrist_flex": 1.58,
-      "wrist_roll": -3.82,
-      "gripper": 0.81
+      "shoulder_lift": -89.19,
+      "elbow_flex": 96.84,
+      "wrist_flex": 1.05,
+      "wrist_roll": -0.31,
+      "gripper": 0.61
     },
     "right_arm": {
-      "shoulder_pan": -2.29,
-      "shoulder_lift": -92.04,
-      "elbow_flex": 96.53,
-      "wrist_flex": -3.38,
-      "wrist_roll": 5.93,
-      "gripper": 0.94
+      "shoulder_pan": -0.7,
+      "shoulder_lift": -90.2,
+      "elbow_flex": 96.26,
+      "wrist_flex": -0.04,
+      "wrist_roll": 0.31,
+      "gripper": 0.6
     },
     "head": {
-      "head_motor_1": -3.52,
-      "head_motor_2": 16.48
+      "head_motor_1": -0.35,
+      "head_motor_2": 20.26
     }
   }
 }

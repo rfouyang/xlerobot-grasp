@@ -1,4 +1,5 @@
-"""Perception: the head camera (frames, depth from Fast-FoundationStereo, its calibration), detection and segmentation."""
+"""Perception: the head camera (frames, depth from Fast-FoundationStereo, its calibration), detection and
+segmentation."""
 
 from __future__ import annotations
 
@@ -66,15 +67,21 @@ class PerceptionConfig:
     # 9 = 3600 tokens: 0.19 s and ~2.8 GiB on the GPU (weights included); lower levels save little and move the
     # depth 1-2 mm (median) from it.
     LINGBOT_RESOLUTION_LEVEL = 9
-    # The grasp page's live depth, raw and refined: at most this rate (LingBot takes ~0.2 s a frame), only while the page
-    # has asked within PREVIEW_IDLE_S, coloured over this fixed range (m; the head at the grasp pose sees the desk at
-    # ~0.3-1.1 m).
+    # The grasp page's live depth, raw and refined: at most this rate (LingBot takes ~0.2 s a frame), only while the
+    # page has asked within PREVIEW_IDLE_S, coloured over this fixed range (m; the head at the grasp pose sees the desk
+    # at ~0.3-1.1 m).
     PREVIEW_HZ = 3.0
     # The framed head RGB ("detect" / "target") has its own thread at up to this rate: colour only, YOLOE, no stereo.
     # In the depth loop it waited for Fast-FoundationStereo every frame and lagged seconds behind (2026-10-09).
     OVERLAY_HZ = 10.0
     PREVIEW_IDLE_S = 3.0
     PREVIEW_RANGE_M = (0.25, 1.1)
+    # A click (or a name) takes the depth preview's newest head frame, with its stereo depth, when it is at most this
+    # old (the task pages keep the preview going), instead of a new one (~2.4 s of stereo).
+    CLICK_FRAME_MAX_AGE_S = 1.0
+    # 「盖子也是目标的一部分」: SAM again with the target's box widened by these shares of its size (upwards most).
+    INCLUDE_GROW_UP = 0.35
+    INCLUDE_GROW_SIDE = 0.12
 
 
 class HeadCameraConfig:
@@ -95,7 +102,8 @@ class HeadCameraConfig:
     MAX_FRAME_AGE_S = 1.5
     # The same for Fast-FoundationStereo's depth (true = read / STEREO_DEPTH_SCALE): 0.72 % too far over 1618 board
     # corners at 0.48-0.51 m (2026-10-08; the sensor checked again at 0.96 %, as on 10-06).
-    STEREO_DEPTH_SCALE = json.loads((BASE_DIR / "config" / "calibration" / "head_ffs_scale_20261008.json").read_text())["head_ffs_depth_scale"]
+    STEREO_DEPTH_SCALE = json.loads((BASE_DIR / "config" / "calibration" /
+                                     "head_ffs_scale_20261008.json").read_text())["head_ffs_depth_scale"]
     EXTRINSIC_FILE = BASE_DIR / "config" / "calibration" / "head_on_jaw_20261006.json"
     APPLY_EXTRINSIC = True
     # The optical frame as measured, relative to the URDF's: base_T_optical = URDF base_T_optical @ CORRECTION

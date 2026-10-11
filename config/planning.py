@@ -129,7 +129,8 @@ class RealPlanningConfig:
     # A copy of MotionConfig.ROBOT_CONFIG with the left arm and head locked where the real ones are.
     ROBOT_CONFIG = BASE_DIR / "asset" / "curobo" / "xlerobot_right_arm_real.yml"
     # The links the planned right arm moves; every other collision link is fixed while planning.
-    MOVING_LINKS = ("Rotation_Pitch", "Upper_Arm", "Lower_Arm", "Wrist_Pitch_Roll", "Fixed_Jaw", "Moving_Jaw", "Right_Arm_Camera")
+    MOVING_LINKS = ("Rotation_Pitch", "Upper_Arm", "Lower_Arm", "Wrist_Pitch_Roll", "Fixed_Jaw", "Moving_Jaw",
+                    "Right_Arm_Camera")
     # Right-arm pairs whose collision spheres overlap at the real folded rest pose (the forearm lies over the shoulder
     # bracket there; spheres are fatter than the parts): with them checked, cuRobo cannot plan out of the rest pose.
     IGNORE_PAIRS = (("Lower_Arm", "Rotation_Pitch"),)
@@ -142,6 +143,10 @@ class RealPlanningConfig:
     # Real grasps: the drink's centre in the jaw within this share of its height, the highest first (from the middle
     # the wrist ran along the table; above 0.65 the spray bottle's shoulder starts curving in).
     GRASP_BAND = (0.5, 0.65)
+    # A short object (lower than SHORT_HEIGHT_M) up to 70 %: at its middle the jaw comes too near the desk (the 11.8 cm
+    # bottle: the left fixed jaw 5.7 cm above it at 65 %, its margin 6 cm, 2026-10-10).
+    SHORT_HEIGHT_M = 0.13
+    GRASP_BAND_SHORT = (0.5, 0.70)
     # The table's front edge never comes closer than this: the cart's top rim (x 0.145-0.194, as high as the table)
     # reads as table in the depth, and a table box reaching under it touched the cart's own collision spheres, so
     # cuRobo found every pose in collision (0 reachable, or not, with 0.1 mm of noise in the edge).
@@ -181,8 +186,8 @@ class RealPlanningConfig:
     # offset between CORRECT_MIN_M and CORRECT_MAX_M, from a fit no worse than CORRECT_FIT_MAX_MM median, is taken out
     # (the scene moved into the model's frame, the jaw sent to the real pre-grasp, grasp and lift planned again). The
     # left arm read 3.8 cm off there on 2026-10-09 while its calibration poses fitted to ~1.5 cm.
-    # Off since 2026-10-09: the fit takes in the wrist camera's mounting plate, which stands behind the jaw and is not in
-    # the URDF, and read the right jaw 3 cm off where the fixed-jaw check found 0.2 cm (and misled the left arm's
+    # Off since 2026-10-09: the fit takes in the wrist camera's mounting plate, which stands behind the jaw and is not
+    # in the URDF, and read the right jaw 3 cm off where the fixed-jaw check found 0.2 cm (and misled the left arm's
     # calibration the same way). The fixed-jaw approach check stays.
     CORRECT_ENABLED = False
     CORRECT_MIN_M = 0.01
@@ -204,8 +209,9 @@ class ReachMapConfig:
     # A least-squares solution below this cost counts (position in m, the level terms weighted 0.3).
     IK_COST = 1e-6
     # IK starts (real degrees: pan, lift, elbow, wrist_flex, wrist_roll), from grasps that planned on 2026-10-08/09.
-    SEEDS_REAL_DEG = ((-14.5, 29.8, 17.0, -46.8, 0.0), (-24.5, 29.2, 16.3, -45.5, 0.0), (-37.7, 48.1, -11.1, -37.0, 0.0),
-                      (-19.0, 17.5, 38.7, -56.2, 0.0), (5.0, 30.0, 15.0, -45.0, 0.0))
+    SEEDS_REAL_DEG = ((-14.5, 29.8, 17.0, -46.8, 0.0), (-24.5, 29.2, 16.3, -45.5, 0.0),
+                      (-37.7, 48.1, -11.1, -37.0, 0.0), (-19.0, 17.5, 38.7, -56.2, 0.0),
+                      (5.0, 30.0, 15.0, -45.0, 0.0))
     # The suggested move goes this much past the nearest reachable cell.
     MARGIN_M = 0.01
     # The desk height the grid is solved at (base_link z, m; planning has measured 0.762-0.766).
@@ -238,9 +244,11 @@ class ArmConfig:
     # user asked on 2026-10-09: left of the line halfway between the shoulders the left arm, right of it the right arm;
     # if the nearer one cannot reach, the other), "right" or "left". The other tasks keep the right arm.
     CHOICE = "auto"
-    ROBOT_CONFIGS = {"right": MotionConfig.ROBOT_CONFIG, "left": BASE_DIR / "asset" / "curobo" / "xlerobot_left_arm.yml"}
+    ROBOT_CONFIGS = {"right": MotionConfig.ROBOT_CONFIG,
+                     "left": BASE_DIR / "asset" / "curobo" / "xlerobot_left_arm.yml"}
     # Copies with the joints not planned locked where the real ones are (written at every planning).
-    REAL_CONFIGS = {"right": RealPlanningConfig.ROBOT_CONFIG, "left": BASE_DIR / "asset" / "curobo" / "xlerobot_left_arm_real.yml"}
+    REAL_CONFIGS = {"right": RealPlanningConfig.ROBOT_CONFIG,
+                    "left": BASE_DIR / "asset" / "curobo" / "xlerobot_left_arm_real.yml"}
     # The real wrist roll's usable range (deg): the right camera cable stops the right wrist at -73 (2026-10-06). The
     # left one is not measured yet: kept to +-90, which also rules out the upside-down level jaw (roll 180, the fixed
     # finger on the right).
@@ -254,16 +262,18 @@ class ArmConfig:
     # spheres overlap at that arm's folded rest pose. The left arm, folded a little tighter (its elbow 4 deg more after
     # its calibration), has the wrist on the upper arm (4.5 mm) and the shoulder bracket (2.1 mm): cuRobo saw its start
     # in collision and planned nothing (2026-10-09).
-    EXTRA_IGNORE_PAIRS = {"right": (), "left": (("Upper_Arm", "Wrist_Pitch_Roll"), ("Rotation_Pitch", "Wrist_Pitch_Roll"))}
-    # The approach check's expected fixed-jaw reading (measured - model, m), taken off before judging. The left one reads
-    # -1.5 cm at every calibration pose even with its mount corrected (-0.7..-1.8): most likely its wrist camera board,
-    # which sits elsewhere than the URDF draws it, in front of the fixed jaw's pixels (the right arm reads ~0).
+    EXTRA_IGNORE_PAIRS = {"right": (),
+                          "left": (("Upper_Arm", "Wrist_Pitch_Roll"), ("Rotation_Pitch", "Wrist_Pitch_Roll"))}
+    # The approach check's expected fixed-jaw reading (measured - model, m), taken off before judging. The left one
+    # reads -1.5 cm at every calibration pose even with its mount corrected (-0.7..-1.8): most likely its wrist camera
+    # board, which sits elsewhere than the URDF draws it, in front of the fixed jaw's pixels (the right arm reads ~0).
     APPROACH_CHECK_OFFSET_M = {"right": 0.0, "left": -0.015}
-    # How much higher than measured cuRobo sees the desk for each arm (RealPlanningConfig.TABLE_CLEARANCE_M for the right):
-    # the left arm's real path dipped with its fingertips down towards the desk on 2026-10-09 while the plan stayed 8.6
-    # cm above it, so it keeps further up until that is understood. The left one is a little above its desk guard margin
-    # (DESK_MARGIN_M, 6 cm): cuRobo's desk is a flat box over the tilted plane and its spheres are not the guard's mesh
-    # points, so a plan at exactly 6 cm came out 5.8 cm by the guard and the approach was refused (2026-10-09 19:35).
+    # How much higher than measured cuRobo sees the desk for each arm (RealPlanningConfig.TABLE_CLEARANCE_M
+    # for the right): the left arm's real path dipped with its fingertips down towards the desk on
+    # 2026-10-09 while the plan stayed 8.6 cm above it, so it keeps further up until that is understood.
+    # The left one is a little above its desk guard margin (DESK_MARGIN_M, 6 cm): cuRobo's desk is a flat
+    # box over the tilted plane and its spheres are not the guard's mesh points, so a plan at exactly 6 cm
+    # came out 5.8 cm by the guard and the approach was refused (2026-10-09 19:35).
     TABLE_CLEARANCE_M = {"right": RealPlanningConfig.TABLE_CLEARANCE_M, "left": 0.065}
     # The desk guard's margin (m): every mesh point of the arm over the desk stays this far above it, in plans and in
     # every target sent to the real arm. The left arm's is wider until its calibration (2026-10-09) is proven in use.

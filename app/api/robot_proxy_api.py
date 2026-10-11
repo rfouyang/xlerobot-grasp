@@ -19,29 +19,25 @@ from util.proxy_helper import ProxyHelper
 METHODS = ["GET", "POST", "PUT", "DELETE"]
 
 
-def create_robot_proxy_api() -> APIRouter:
-    router = APIRouter()
-    robot = ProxyHelper(RobotServerConfig.URL)
+router = APIRouter()
+robot = ProxyHelper(RobotServerConfig.URL)
 
-    @router.api_route("/robot-api/{path:path}", methods=METHODS)
-    async def robot_api(request: Request, path: str):
-        """/robot-api/api/status -> 8011 /api/status; /robot-api/stream/head -> 8011 /stream/head (MJPEG)."""
-        response = await robot.http(request, path)
-        return response
+@router.api_route("/robot-api/{path:path}", methods=METHODS)
+async def robot_api(request: Request, path: str):
+    """/robot-api/api/status -> 8011 /api/status; /robot-api/stream/head -> 8011 /stream/head (MJPEG)."""
+    response = await robot.http(request, path)
+    return response
 
-    @router.websocket("/robot-ws/{path:path}")
-    async def robot_ws(websocket: WebSocket, path: str):
-        """/robot-ws/teleop -> 8011 /ws/teleop."""
-        await robot.websocket(websocket, f"ws/{path}")
-
-
-    return router
+@router.websocket("/robot-ws/{path:path}")
+async def robot_ws(websocket: WebSocket, path: str):
+    """/robot-ws/teleop -> 8011 /ws/teleop."""
+    await robot.websocket(websocket, f"ws/{path}")
 
 
 def demo_robot_proxy_api() -> None:
     """Needs the robot process: one read, and the teleop WebSocket's first state."""
     app = FastAPI()
-    app.include_router(create_robot_proxy_api())
+    app.include_router(router)
     client = TestClient(app)
     logger.info("电机后台：{}", client.get("/robot-api/api/status").json()["torque"])
     with client.websocket_connect("/robot-ws/teleop") as websocket:

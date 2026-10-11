@@ -17,7 +17,6 @@ import wave
 from loguru import logger
 
 from config.settings import use_utf8_output
-
 from config.voice import AlertConfig, ByteplusTtsConfig
 from util.byteplus_tts_helper import ByteplusTtsHelper
 
@@ -41,12 +40,14 @@ class SpeechHelper:
     def _say(self, text: str) -> None:
         try:
             clip = self.clip(text)
-            windows_path = subprocess.run(["wslpath", "-w", str(clip)], capture_output=True, text=True, check=True).stdout.strip()
+            windows_path = subprocess.run(["wslpath", "-w", str(clip)], capture_output=True, text=True,
+                                          check=True).stdout.strip()
             # The speaker unmuted and at least MIN_VOLUME_PERCENT loud first (someone had turned it down to 13, 12:16).
             # The script runs from beside the clips on C:, which PowerShell trusts more than a WSL path.
             script = self.clip_dir / AlertConfig.VOLUME_SCRIPT.name
             script.write_bytes(AlertConfig.VOLUME_SCRIPT.read_bytes())
-            script_path = subprocess.run(["wslpath", "-w", str(script)], capture_output=True, text=True, check=True).stdout.strip()
+            script_path = subprocess.run(["wslpath", "-w", str(script)], capture_output=True, text=True,
+                                         check=True).stdout.strip()
             self.powershell_run(f"& '{script_path}' -MinPercent {AlertConfig.MIN_VOLUME_PERCENT} | Out-Null; "
                                 f"(New-Object System.Media.SoundPlayer '{windows_path}').PlaySync()")
         except Exception as error:
@@ -72,8 +73,8 @@ class SpeechHelper:
 
     def powershell_run(self, script: str) -> None:
         # Bypass: Windows may refuse to run the volume script file under its default policy.
-        subprocess.run([self.powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
-                       stdin=subprocess.DEVNULL, capture_output=True, check=True, timeout=60)
+        subprocess.run([self.powershell, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command",
+                        script], stdin=subprocess.DEVNULL, capture_output=True, check=True, timeout=60)
 
 
 def demo_speech_helper() -> None:

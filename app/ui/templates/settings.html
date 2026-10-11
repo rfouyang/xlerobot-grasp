@@ -1,51 +1,53 @@
 {% extends "base.html" %}
-{# 系统设置 (design: 07): the self-check (services, cameras, joints, planning, USB devices), read-only, and the restart. #}
+{# 系统设置 (design: Penpot page 08, 「系统设置 / 电脑（修订）」): the summary with the self-check's buttons on it, the
+   five stages and the wrist cameras' matching (the two cameras at their real 480×640) in three columns. #}
 {% block title %}系统设置{% endblock %}
-{% block subtitle %}确认服务、相机与关节可用，再进入遥操作或抓取。自检只读：不开力矩、不动机器人。{% endblock %}
 {% block scripts %}<script src="/static/ui/settings.js?v={{ asset_version('settings.js') }}" defer></script>{% endblock %}
+{% set view = "overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs" %}
 {% block content %}
-        <div id="summary" class="rounded-xl border border-gray-200 bg-white p-4 shadow-2xs">
-          <p id="summary-title" class="text-base font-semibold text-gray-800">正在自检…</p>
-          <p id="summary-text" class="mt-1 text-sm text-gray-500"></p>
+        <!-- The summary and the self-check: settings.js colours it by the result. -->
+        <div id="summary" class="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-2xs">
+          <div class="min-w-0 flex-1">
+            <p id="summary-title" class="text-base font-semibold text-gray-800">正在自检…</p>
+            <p id="summary-text" class="mt-1 text-sm text-gray-600"></p>
+            <p class="mt-1 text-xs text-gray-500">自检只读：不开力矩、不动机器人。机器人进程挂了，app/main.py 会在约 15 s 内自动重启它（还有力矩的部件会被接管，手臂不会掉）。<span id="check-time"></span></p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="flex items-center gap-2 text-xs text-gray-700"><input id="auto-check" type="checkbox" class="size-4 rounded border-gray-300 text-blue-600" /> 每 10 s 自动自检</label>
+            <button id="btn-restart-robot" type="button" class="{{ button }}">重启机器人进程</button>
+            <button id="btn-check" type="button" class="{{ primary }}">运行完整自检</button>
+          </div>
         </div>
 
-        <div id="stages" class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3"></div>
+        <!-- The five stages (settings.js fills #stages, "contents" so its cards are this grid's), then 设备匹配 in the
+             sixth place. -->
+        <div class="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div id="stages" class="contents"></div>
 
-        <!-- 设备自动匹配 (design: 07): the two identical wrist cameras by their USB port; preview, swap, confirm. -->
-        <section class="{{ card }}">
-          <div class="{{ card_head }}">
-            <h2 class="{{ card_title }}">设备匹配：左右腕相机</h2>
+        <!-- 设备匹配: the two identical wrist cameras by their USB port; preview, swap, confirm. -->
+        <section class="{{ view }}">
+          <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
+            <h2 class="text-base font-bold text-gray-800">设备匹配：左右腕相机</h2>
             <span id="match-state" class="text-xs text-gray-500"></span>
           </div>
-          <div class="space-y-3 p-4 text-sm text-gray-700">
-            <p>两个腕部相机型号相同、没有序列号，只能按 USB 口区分（跟挂载顺序走）。用键盘控制<strong>张开左手夹爪</strong>，看下面哪个画面里的夹爪在动：它应该在「左腕」那一格。不对就交换。</p>
-            <div class="grid gap-3 sm:grid-cols-2">
+          <div class="space-y-3 p-4">
+            <div class="grid grid-cols-2 gap-3">
               {% for role, label in [("left_wrist", "左腕"), ("right_wrist", "右腕")] %}
-              <figure class="overflow-hidden rounded-xl border border-gray-200">
-                <div class="relative aspect-[3/4] max-h-80 bg-gray-900 sm:aspect-[4/3]"><img src="/robot-api/stream/{{ role }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></div>
-                <figcaption class="flex items-center justify-between px-3 py-2 text-xs"><span class="font-semibold text-gray-800">{{ label }}</span><span id="port-{{ role }}" class="font-mono text-gray-500"></span></figcaption>
+              <figure class="{{ view }}">
+                <div class="relative aspect-[3/4] bg-gray-900"><img src="/robot-api/stream/{{ role }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></div>
+                <figcaption class="flex items-center gap-2 px-3 py-1.5 text-xs"><span class="shrink-0 font-semibold text-gray-800">{{ label }}</span><span id="port-{{ role }}" class="min-w-0 truncate font-mono text-[11px] text-gray-500"></span></figcaption>
               </figure>
               {% endfor %}
             </div>
-            <div class="flex flex-wrap gap-2">
-              <button id="btn-match-confirm" type="button" class="{{ primary }}">确认映射正确</button>
-              <button id="btn-match-swap" type="button" class="{{ button }}">交换左右腕（会重启机器人进程）</button>
+            <div class="space-y-3 text-sm text-gray-700">
+              <p>两个腕部相机型号相同、没有序列号，只能按 USB 口区分（跟挂载顺序走）。</p>
+              <p>在键盘控制页<strong>张开左手夹爪</strong>，看上面哪个画面里的夹爪在动：它应该在「左腕」那一格。对就确认；不对就交换。</p>
+              <div class="flex flex-wrap gap-2">
+                <button id="btn-match-confirm" type="button" class="{{ primary }}">确认映射正确</button>
+                <button id="btn-match-swap" type="button" class="{{ button }}">交换左右腕（会重启机器人进程）</button>
+              </div>
             </div>
           </div>
         </section>
-
-        <section class="{{ card }}">
-          <div class="{{ card_head }}">
-            <h2 class="{{ card_title }}">自检与恢复</h2>
-            <span id="check-time" class="text-xs text-gray-500"></span>
-          </div>
-          <div class="space-y-3 p-4 text-sm text-gray-600">
-            <p>检查服务 → 相机图像 → 关节读数 → 规划依赖 → USB 设备。机器人进程挂了，app/main.py 会在约 15 s 内自动重启它（重启后接管还有力矩的部件，手臂不会掉）。</p>
-            <div class="flex flex-wrap gap-2">
-              <button id="btn-check" type="button" class="{{ primary }}">运行完整自检</button>
-              <button id="btn-restart-robot" type="button" class="{{ button }}">重启机器人进程</button>
-              <label class="flex items-center gap-2 text-sm text-gray-700"><input id="auto-check" type="checkbox" class="size-4 rounded border-gray-300 text-blue-600" /> 每 10 s 自动自检</label>
-            </div>
-          </div>
-        </section>
+        </div>
 {% endblock %}

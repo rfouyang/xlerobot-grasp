@@ -21,7 +21,6 @@ from loguru import logger
 from viser.extras import ViserUrdf
 
 from config.settings import PathConfig, use_utf8_output
-
 from config.simulation import ViewerConfig
 
 
@@ -70,7 +69,8 @@ class SceneViewHelper:
             self.handles[name] = self.server.scene.add_box(
                 name, color=color, dimensions=dimensions, position=pose[:3, 3], wxyz=tra.quaternion_from_matrix(pose))
 
-    def set_mesh(self, name: str, mesh: trimesh.Trimesh, pose: np.ndarray = None, color: tuple = None, **kwargs) -> None:
+    def set_mesh(self, name: str, mesh: trimesh.Trimesh, pose: np.ndarray = None, color: tuple = None,
+                 **kwargs) -> None:
         """Without a color the mesh keeps its own texture / vertex colors."""
         pose = np.eye(4) if pose is None else pose
         with self.lock:

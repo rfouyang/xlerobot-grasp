@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 
-
 class RealRobotConfig:
     """The real XLeRobot is reached only through the robot process (app/robot_main.py): it owns the serial ports and the
     cameras, and keeps the safety rules (rest pose, torque, watchdog)."""
@@ -49,10 +48,21 @@ class PlaceConfig:
     WALL_M = 0.005
     WALL_MARGIN_M = 0.01
     MAX_PLACE_TRIES = 12
-    # The box as an obstacle starts this far in front of the robot (base x, m): nearer, the folded left arm sits over it.
-    OBSTACLE_MIN_X = 0.15
-    # Place points this far from the right shoulder's axis (m) are tried first: the middle of the box, a little short of its centre.
-    PREFERRED_REACH_M = 0.41  # 0.33 put the bottle on the near wall; past ~0.41 the level jaw is out of reach over the box (2026-10-06)
+    # The box as an obstacle starts this far in front of the robot (base x, m): nearer, the folded left arm sits over
+    # it, and base_link has a collision sphere at x 0.156 at desk height (its front edge on the desk): with a box 0.12 m
+    # near, an obstacle from 0.15 put every right-arm state in collision (2026-10-10 23:28).
+    OBSTACLE_MIN_X = 0.18
+    # Place points this far from the right shoulder's axis (m) are tried first: the middle of the box, a little short
+    # of its centre. 0.33 put the bottle on the near wall; past ~0.41 the level jaw is out of reach over the box
+    # (2026-10-06).
+    PREFERRED_REACH_M = 0.41
+    # The chat offers a box to put it in only when its middle is this near the right shoulder (m): the open box
+    # stood 0.41 m away, the tissue box at the back left 0.68 m (2026-10-10).
+    # The grasp reach maps said both were out of reach.
+    BOX_MAX_REACH_M = 0.55
+    # The part of a box the right arm reaches, roughly, for the + of a box chosen by words (m from the right shoulder):
+    # the bottle went in 0.42 m away twice (2026-10-10); planning then takes the place points that really reach.
+    REACH_BAND_M = (0.30, 0.46)
     # The jaw's lowest point below the tool frame: the bottle hangs (grasp height above its foot - this) below it.
     TOOL_ABOVE_JAW_BOTTOM_M = 0.03
     # Carrying, the bottle's foot clears the rim by at least this (the box obstacle raised by the hanging bottle).

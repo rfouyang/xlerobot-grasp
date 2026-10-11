@@ -26,47 +26,45 @@ class MoveRequest(BaseModel):
     pose: str
 
 
-def create_robot_operation_api() -> APIRouter:
-    router = APIRouter()
+router = APIRouter()
 
-    @router.get("/api/robot/state")
-    def state():
-        response = {"joints": grasp_context.joint_state()}
-        return response
+@router.get("/api/robot/state")
+def state():
+    response = {"joints": grasp_context.joint_state()}
+    return response
 
-    @router.get("/api/robot/poses")
-    def poses():
-        response = grasp_context.robot_poses()
-        return response
+@router.get("/api/robot/poses")
+def poses():
+    response = grasp_context.robot_poses()
+    return response
 
-    @router.post("/api/robot/move")
-    def move(request: MoveRequest):
-        """Plain def: FastAPI runs it in a worker thread, so a slow motion never blocks the WebSocket."""
-        response = {"moved": grasp_context.move_robot(request.arm, request.part, request.pose)}
-        return response
+@router.post("/api/robot/move")
+def move(request: MoveRequest):
+    """Plain def: FastAPI runs it in a worker thread, so a slow motion never blocks the WebSocket."""
+    response = {"moved": grasp_context.move_robot(request.arm, request.part, request.pose)}
+    return response
 
-    @router.websocket("/ws/robot/state")
-    async def state_stream(websocket: WebSocket):
-        await websocket.accept()
-        try:
-            while True:
-                await websocket.send_json({"joints": grasp_context.joint_state()})
-                await asyncio.sleep(ServerConfig.STATE_PUSH_INTERVAL_S)
-        except WebSocketDisconnect:
-            # The page was closed or reloaded; nothing to clean up.
-            pass
-
-    return router
+@router.websocket("/ws/robot/state")
+async def state_stream(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            await websocket.send_json({"joints": grasp_context.joint_state()})
+            await asyncio.sleep(ServerConfig.STATE_PUSH_INTERVAL_S)
+    except WebSocketDisconnect:
+        # The page was closed or reloaded; nothing to clean up.
+        pass
 
 
 def demo_robot_operation_api() -> None:
     """Needs the bringup launch; starts the application (and its 3D view) in-process."""
     grasp_context.start()
     app = FastAPI()
-    app.include_router(create_robot_operation_api())
+    app.include_router(router)
     client = TestClient(app)
     logger.info("/api/robot/poses：{}", client.get("/api/robot/poses").json())
-    logger.info("move ready：{}", client.post("/api/robot/move", json={"arm": "right", "part": "arm", "pose": "ready"}).json())
+    logger.info("move ready：{}",
+                client.post("/api/robot/move", json={"arm": "right", "part": "arm", "pose": "ready"}).json())
     with client.websocket_connect("/ws/robot/state") as websocket:
         joints = websocket.receive_json()["joints"]
     logger.info("WebSocket 推送：Pitch={:.3f} Elbow={:.3f}", joints["Pitch"], joints["Elbow"])

@@ -20,7 +20,6 @@ import yourdfpy
 from loguru import logger
 
 from config.planning import GripperConfig
-
 from config.settings import PathConfig, use_utf8_output
 
 
@@ -100,7 +99,8 @@ class GripperDescription:
                     mesh.set("filename", f"meshes/{Path(package_path).name}")
                 robot.append(link)
         for joint in source.findall("joint"):
-            if joint.find("parent").get("link") in GripperConfig.LINKS and joint.find("child").get("link") in GripperConfig.LINKS:
+            if (joint.find("parent").get("link") in GripperConfig.LINKS
+                    and joint.find("child").get("link") in GripperConfig.LINKS):
                 robot.append(joint)
         tree = ET.ElementTree(robot)
         ET.indent(tree, "  ")
@@ -114,8 +114,10 @@ class GripperDescription:
         moving_tip = gripper.get_transform(GripperConfig.MOVING_TIP_LINK, "gripper_base")[:3, 3]
         tip_z = (fixed_tip[2] + moving_tip[2]) / 2
         box = {
-            "extents": [round(abs(fixed_tip[0] - moving_tip[0]), 4), GripperConfig.SWEEP_WIDTH, GripperConfig.SWEEP_DEPTH],
-            "offset": [round((fixed_tip[0] + moving_tip[0]) / 2, 4), 0.0, round(tip_z - GripperConfig.SWEEP_DEPTH / 2, 4)],
+            "extents": [round(abs(fixed_tip[0] - moving_tip[0]), 4), GripperConfig.SWEEP_WIDTH,
+                        GripperConfig.SWEEP_DEPTH],
+            "offset": [round((fixed_tip[0] + moving_tip[0]) / 2, 4), 0.0,
+                       round(tip_z - GripperConfig.SWEEP_DEPTH / 2, 4)],
         }
         return box
 

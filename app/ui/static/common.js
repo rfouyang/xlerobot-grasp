@@ -43,13 +43,31 @@ function releaseAll() {
   sendKeys();
 }
 
-async function post(url, body) {
-  const response = await fetch(url, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}),
-  });
-  // A server error must not leave a switch disabled: it comes back as { error }.
-  const result = response.ok ? await response.json() : { error: `${response.status} ${await response.text()}` };
-  return result;
+// Every request of the pages (app/api/errors.py): the answer, or an Error with the server's own words in its message
+// and the HTTP status (409 busy, 422 cannot be chosen or done, 404 not there, 503 no head camera picture). A body
+// that is a Blob goes as it is.
+function detailText(detail) {
+  // FastAPI's validation errors come as a list; our own as one string.
+  if (Array.isArray(detail)) return detail.map((item) => `${item.loc[item.loc.length - 1]}: ${item.msg}`).join("; ");
+  return detail || "";
+}
+
+async function api(method, url, body) {
+  const options = { method, headers: { Accept: "application/json" } };
+  if (body instanceof Blob) {
+    options.body = body;
+    options.headers["Content-Type"] = "application/octet-stream";
+  } else if (body !== undefined) {
+    options.body = JSON.stringify(body);
+    options.headers["Content-Type"] = "application/json";
+  }
+  const response = await fetch(url, options).catch(() => null);
+  if (!response) throw Object.assign(new Error("网页服务没响应"), { status: 0 });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw Object.assign(new Error(detailText(data.detail) || `请求失败（${response.status}）`), { status: response.status });
+  }
+  return data;
 }
 
 function notify(text) {
@@ -74,6 +92,42 @@ function setLink(text, classes) {
 const awayText = (away) => Object.entries(away).map(([part, joints]) =>
   `${App.config.parts[part]}：` + Object.entries(joints).map(([joint, delta]) => `${joint} ${delta > 0 ? "+" : ""}${delta}°`).join("，")).join("；");
 
+// --- pictures ---
+
+// A picture polled from the grasp side (the head depth, the head overlays): the next one is asked for once the last
+// has arrived, so a slow backend only slows the view down; asking is also what keeps the backend's preview of that
+// kind running. emptyId: a placeholder hidden once the first picture is in; onHeaders: gets each picture's response
+// headers (the depth's X-Valid / X-Range).
+function live(imageId, url, emptyId, onHeaders) {
+  const image = document.getElementById(imageId);
+  const next = (delay) => setTimeout(load, delay);
+  async function load() {
+    const response = await fetch(`${url}?t=${Date.now()}`).catch(() => null);
+    if (!response || !response.ok) {
+      next(1000);
+      return;
+    }
+    const old = image.src;
+    image.src = URL.createObjectURL(await response.blob());
+    if (old.startsWith("blob:")) URL.revokeObjectURL(old);
+    image.classList.remove("hidden");
+    if (emptyId) document.getElementById(emptyId).classList.add("hidden");
+    if (onHeaders) onHeaders(response.headers);
+    next(80);
+  }
+  next(0);
+}
+
+// The caption of a depth picture: how much of it has a depth, and its colour scale (blue near, red far).
+function depthNote(headers) {
+  const note = document.getElementById("depth-note");
+  const valid = headers.get("X-Valid");
+  const range = headers.get("X-Range");
+  if (!note || valid === null || !range) return;
+  const [near, far] = range.split("-");
+  note.textContent = `有效 ${Math.round(Number(valid) * 100)}% · 蓝 ${near} m → 红 ${far} m`;
+}
+
 // --- header actions ---
 
 async function onTorque(event) {
@@ -86,7 +140,8 @@ async function onTorque(event) {
   App.torqueBusy = true;
   input.disabled = true;
   notify(on ? "" : "正在回停靠位，到了之后断力矩……");
-  const result = await post(`${ROBOT_API}/api/torque`, { part: "all", on });
+  // A server error must not leave the switch disabled: it is said like a refusal.
+  const result = await api("POST", `${ROBOT_API}/api/torque`, { part: "all", on }).catch((error) => ({ error: error.message }));
   App.torqueBusy = false;
   input.disabled = false;
   if (result.error) notify(`力矩${on ? "打开" : "关闭"}失败：${result.error}`);
@@ -95,14 +150,31 @@ async function onTorque(event) {
   else notify("");
 }
 
+// 回到停靠位并关闭力矩 (the keyboard and task pages' bottom bar): the top bar's torque switch turned off, which walks
+// to the nearest dock first, then cuts the torque.
+function onDockOff(event) {
+  event.preventDefault();
+  const input = document.getElementById("torque-all");
+  if (!input.checked) {
+    notify("力矩已经是关的。");
+    return;
+  }
+  input.checked = false;
+  input.dispatchEvent(new Event("change"));
+}
+
 async function onPose(name, label) {
   if (!App.latest || !Object.entries(App.latest.torque).some(([part, on]) => on && part !== "base")) {
     notify("先打开力矩（机器人在休息位或抓取位上），再去" + label + "。");
     return;
   }
   if (!confirm(`手臂和头会以 20°/s 走到${label}。开始？`)) return;
-  const result = await post(`${ROBOT_API}/api/pose`, { name });
-  notify(result.error ? `去${label}失败：${result.error}` : "");
+  try {
+    await api("POST", `${ROBOT_API}/api/pose`, { name });
+    notify("");
+  } catch (error) {
+    notify(`去${label}失败：${error.message}`);
+  }
 }
 
 // --- the head camera's detection overlay (a canvas with id "overlay" over the head view) ---
@@ -223,11 +295,16 @@ async function pollGraspLink() {
 // --- keyboard, focus ---
 
 function setFocusAlert(show) {
-  document.getElementById("focus-alert").classList.toggle("hidden", !show);
+  // An inline style: the badge's own display classes would otherwise beat "hidden".
+  document.getElementById("focus-alert").style.display = show ? "inline-block" : "none";
 }
 
+// Typing in a box (a joint target, a task description) must not drive the robot: digits are the head's keys. Esc
+// still stops.
+const typing = (event) => event.target.closest?.("input, textarea, select, [contenteditable]") && event.code !== "Escape";
+
 document.addEventListener("keydown", (event) => {
-  if (!App.mappedCodes.has(event.code)) return;
+  if (!App.mappedCodes.has(event.code) || typing(event)) return;
   event.preventDefault();
   if (!App.keyboardKeys.has(event.code)) {
     App.keyboardKeys.add(event.code);
@@ -257,10 +334,11 @@ App.ready = (async () => {
   App.mappedCodes = new Set(App.config.keymap.stop.map((key) => key.code));
   document.getElementById("robot-name").textContent = App.config.robot;
   document.getElementById("torque-all").addEventListener("change", onTorque);
-  document.getElementById("btn-stop").addEventListener("click", () => post(`${ROBOT_API}/api/stop`));
+  document.getElementById("btn-stop").addEventListener("click", () => api("POST", `${ROBOT_API}/api/stop`).catch((error) => notify(`没能停止：${error.message}`)));
   // The pose buttons are on the keyboard page only.
   document.getElementById("btn-rest")?.addEventListener("click", () => onPose("rest", "休息位"));
   document.getElementById("btn-grasp-start")?.addEventListener("click", () => onPose("grasp_start", "抓取位"));
+  document.getElementById("btn-dock-off")?.addEventListener("click", onDockOff);
   connect();
   // Heartbeat: the backend's watchdog releases the keys if these stop arriving.
   setInterval(sendKeys, App.config.heartbeat_ms);

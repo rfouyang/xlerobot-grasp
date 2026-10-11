@@ -14,16 +14,15 @@ import math
 from loguru import logger
 
 from config.robot import JointMappingConfig
-
 from config.settings import use_utf8_output
 
 ARMS = {"right_arm": "", "left_arm": "_2"}
 
 
 class JointMappingHelper:
-    """real = sign * urdf_deg + offset, per joint; the grippers map 0-100 onto Jaw 0..JAW_OPEN_RAD. corrections: each arm's
-    calibrated joint corrections (JointMappingConfig.ARM_CORRECTION_DEG; {} for the bare mapping, as a re-calibration
-    from scratch wants)."""
+    """real = sign * urdf_deg + offset, per joint; the grippers map 0-100 onto Jaw 0..JAW_OPEN_RAD. corrections: each
+    arm's calibrated joint corrections (JointMappingConfig.ARM_CORRECTION_DEG; {} for the bare mapping, as a
+    re-calibration from scratch wants)."""
 
     def __init__(self, **kwargs) -> None:
         self.corrections = kwargs.get("corrections", JointMappingConfig.ARM_CORRECTION_DEG)
@@ -35,7 +34,8 @@ class JointMappingHelper:
             if part in real:
                 correction = self.corrections.get(part, {})
                 for joint, (motor, sign, offset) in JointMappingConfig.ARM.items():
-                    urdf[joint + suffix] = math.radians((real[part][motor] - offset) / sign + correction.get(motor, 0.0))
+                    urdf[joint + suffix] = math.radians((real[part][motor] - offset) / sign
+                                                        + correction.get(motor, 0.0))
                 urdf["Jaw" + suffix] = real[part]["gripper"] / 100 * JointMappingConfig.JAW_OPEN_RAD
         if "head" in real:
             for joint, (motor, sign, offset) in JointMappingConfig.HEAD.items():
@@ -49,7 +49,8 @@ class JointMappingHelper:
             correction = self.corrections.get(part, {})
             for joint, (motor, sign, offset) in JointMappingConfig.ARM.items():
                 if joint + suffix in urdf:
-                    real.setdefault(part, {})[motor] = sign * (math.degrees(urdf[joint + suffix]) - correction.get(motor, 0.0)) + offset
+                    real.setdefault(part, {})[motor] = sign * (math.degrees(urdf[joint + suffix])
+                                                               - correction.get(motor, 0.0)) + offset
             if "Jaw" + suffix in urdf:
                 real.setdefault(part, {})["gripper"] = urdf["Jaw" + suffix] / JointMappingConfig.JAW_OPEN_RAD * 100
         for joint, (motor, sign, offset) in JointMappingConfig.HEAD.items():
@@ -69,7 +70,8 @@ def demo_joint_mapping_helper() -> None:
         urdf = helper.to_urdf(real)
         back = helper.to_real(urdf)
         error = max(abs(back[part][motor] - value) for part, joints in real.items() for motor, value in joints.items())
-        logger.info("{}：URDF {}；往返误差 {:.1e}°", name, {joint: round(value, 3) for joint, value in urdf.items()}, error)
+        logger.info("{}：URDF {}；往返误差 {:.1e}°", name,
+                    {joint: round(value, 3) for joint, value in urdf.items()}, error)
 
 
 def main() -> None:

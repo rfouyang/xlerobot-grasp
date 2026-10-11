@@ -36,7 +36,8 @@ class BoardView:
 class CharucoHelper:
     def __init__(self) -> None:
         dictionary = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, CharucoConfig.DICTIONARY))
-        self.board = cv2.aruco.CharucoBoard(CharucoConfig.SQUARES, CharucoConfig.SQUARE_M, CharucoConfig.MARKER_M, dictionary)
+        self.board = cv2.aruco.CharucoBoard(CharucoConfig.SQUARES, CharucoConfig.SQUARE_M, CharucoConfig.MARKER_M,
+                                            dictionary)
         self.detector = cv2.aruco.CharucoDetector(self.board)
         self.total = (CharucoConfig.SQUARES[0] - 1) * (CharucoConfig.SQUARES[1] - 1)
 

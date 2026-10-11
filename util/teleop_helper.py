@@ -17,10 +17,16 @@ import numpy as np
 from loguru import logger
 
 from config.perception import HeadCameraConfig
-
 from config.settings import use_utf8_output
-
 from config.task import RealRobotConfig
+
+
+class CameraStaleError(RuntimeError):
+    """The head camera's last frame is too old: its message is what the pages say."""
+
+    def __init__(self, age: float) -> None:
+        since = f"{age:.0f} 秒" if age < 120 else f"{age / 60:.0f} 分钟"
+        super().__init__(f"头部相机没有画面了（{since}没更新）：请检查机器人的 USB 连接，接好后再试。")
 
 
 class TeleopHelper:
@@ -39,7 +45,7 @@ class TeleopHelper:
         frame = {key: archive[key] for key in archive.files}
         age = time.time() - float(frame["time"])
         if age > HeadCameraConfig.MAX_FRAME_AGE_S:
-            raise RuntimeError(f"头部相机画面已经 {age:.0f} s 没更新（teleop 的相机线程停了？）")
+            raise CameraStaleError(age)
         frame["depth_scale"] = frame["depth_scale"] / HeadCameraConfig.DEPTH_SCALE
         return frame
 

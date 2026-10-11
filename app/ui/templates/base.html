@@ -12,7 +12,7 @@
   <body class="h-full bg-[#F5F7FB] text-sm text-gray-800">
     {% set card = "flex flex-col rounded-xl border border-gray-200 bg-white shadow-2xs" %}
     {% set card_head = "flex items-center justify-between gap-x-3 border-b border-gray-200 px-4 py-3" %}
-    {% set card_title = "text-sm font-semibold text-gray-800" %}
+    {% set card_title = "text-base font-bold text-gray-800" %}
     {% set nav_link = "flex w-full items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-hidden" %}
     {% set nav_on = "bg-blue-50 font-semibold text-blue-600 hover:bg-blue-50" %}
     {% set button = "inline-flex items-center justify-center gap-x-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-2xs hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50" %}
@@ -30,8 +30,12 @@
           <li class="flex items-center text-sm text-gray-500">控制台<span class="mx-2 text-gray-300">/</span></li>
           <li class="truncate text-sm font-semibold text-gray-800">{{ self.title() }}</li>
         </ol>
-        <div class="ms-auto flex items-center gap-x-2">
+        <div class="ms-auto flex min-w-0 items-center gap-x-2">
+          <!-- No keyboard focus: shown in this bar, right-aligned before the badges, so the page below never shifts. -->
+          <span id="focus-alert" style="display: none" class="min-w-0 truncate rounded-md border border-yellow-200 bg-yellow-50 px-2.5 py-1 text-xs font-medium text-yellow-800" role="status">● 页面没有键盘焦点：按键已全部松开，点一下页面再操作</span>
           <span id="keys-badge" class="hidden items-center rounded-md bg-gray-100 px-2 py-1 font-mono text-xs text-gray-600 xl:inline-flex">按键：无</span>
+          {# A page's own switches in the bar (the task pages: 语音讲解). #}
+          {% block topbar %}{% endblock %}
           <span id="link-badge" class="inline-flex items-center gap-x-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">未连接</span>
           <label for="torque-all" class="flex cursor-pointer items-center gap-x-2 rounded-lg border border-gray-200 px-3 py-1.5 shadow-2xs">
             <input id="torque-all" type="checkbox" class="relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full border border-gray-200 bg-gray-100 p-px transition-colors duration-200 checked:border-blue-600 checked:bg-blue-600 disabled:pointer-events-none disabled:opacity-50 before:inline-block before:size-5 before:translate-x-0 before:rounded-full before:bg-white before:shadow-sm before:transition before:duration-200 checked:before:translate-x-full" />
@@ -75,16 +79,10 @@
         <div id="loop-alert" class="hidden rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
           <span class="font-semibold">控制循环已停止。</span>按键不再起作用，底盘已停，已上力矩的部件停在最后的目标。看机器人进程的日志（log/robot_*.log），重启它。
         </div>
-        <div id="focus-alert" class="hidden rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800" role="alert">
-          <span class="font-semibold">页面没有键盘焦点。</span>所有按键已松开，点一下页面再操作。
-        </div>
         <div id="action-alert" class="hidden rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800" role="alert"></div>
-        {% block heading %}
-        <div>
-          <h1 class="text-2xl font-bold text-gray-800">{{ self.title() }}</h1>
-          <p class="mt-1 text-sm text-gray-500">{% block subtitle %}{% endblock %}</p>
-        </div>
-        {% endblock %}
+        {# No page title or subtitle: the top bar already names the page (the user, 10-09: text without information
+           only takes space). A page that needs a line of its own puts it in its content. #}
+        {% block heading %}{% endblock %}
         {% block content %}{% endblock %}
       </div>
     </main>

@@ -1,44 +1,81 @@
 {% extends "base.html" %}
+{# 键盘控制 (design: Penpot page 08, board 「键盘控制 / 电脑（修订）」). Left: the camera block at the cameras' real
+   aspect ratios (head 640×480, left wrist 480×640, head depth 640×480, right wrist 480×640), its width --cam set by
+   the window's height so the page fits one screen, no cap (larger than 640 px is fine). Right: 控制面板 and 运行状态 in a
+   516–640 px column, each part with its joints. Bottom: 调试详情 and the dock actions. The page is at most --cam +
+   656 px wide; a wider window leaves the
+   rest empty rather than stretching the controls. #}
 {% block title %}键盘控制{% endblock %}
 {% block scripts %}<script src="/static/ui/keyboard.js?v={{ asset_version('keyboard.js') }}" defer></script>{% endblock %}
-{% block subtitle %}按住键盘或按钮移动，松开即停。左臂、右臂、头、底盘都可以控制。{% endblock %}
+{% set view = "overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xs" %}
+{% set dock = "inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-800 hover:bg-gray-50" %}
 {% block content %}
-        <section id="overview" class="grid gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4"></section>
-
-        <section id="cameras-card" class="{{ card }}">
-          <div class="{{ card_head }}"><h2 class="{{ card_title }}">相机</h2><span id="overlay-info" class="text-xs text-gray-500">15 fps；头部 RGB 上叠加目标检测</span></div>
-          <div id="cameras" class="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-4"></div>
-        </section>
-
-        <div class="grid gap-4 sm:gap-6 xl:grid-cols-3">
-          <section id="keymap-card" class="{{ card }} xl:col-span-2">
-            <div class="{{ card_head }}"><h2 class="{{ card_title }}">键位</h2><span class="text-end text-xs text-gray-500">按住键盘，或按住按钮。腕部顺/逆时针：从手腕往指尖方向看</span></div>
-            <div id="keymap" class="grid gap-6 p-4 sm:grid-cols-2"></div>
-          </section>
-          <section id="joints-card" class="{{ card }}">
-            <div class="{{ card_head }}"><h2 class="{{ card_title }}">关节</h2><span class="text-xs text-gray-500">当前 / 目标（°）</span></div>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50"><tr>
-                  <th class="px-4 py-2 text-start text-xs font-medium text-gray-500 uppercase">关节</th>
-                  <th class="px-4 py-2 text-end text-xs font-medium text-gray-500 uppercase">当前</th>
-                  <th class="px-4 py-2 text-end text-xs font-medium text-gray-500 uppercase">目标</th>
-                </tr></thead>
-                <tbody id="joints" class="divide-y divide-gray-100 font-mono text-xs"></tbody>
-              </table>
+        <!-- --cam: (window height − the rest of the page) / 1.103, the camera block's height-to-width ratio. -->
+        <div class="space-y-4" style="--cam: max(22rem, calc((100dvh - 228px) * 0.906)); max-width: calc(var(--cam) + 656px)">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+            <div class="flex w-full shrink-0 flex-col gap-3 lg:w-[min(calc(100%_-_532px),var(--cam))]">
+              <figure class="{{ view }}">
+                <div class="relative aspect-[4/3] bg-gray-900"><img id="head-img" src="/robot-api/stream/head" class="absolute inset-0 h-full w-full object-contain" alt="头部 RGB" /></div>
+                <figcaption class="flex items-center justify-between px-3 py-2 text-xs">
+                  <span class="text-sm font-semibold text-gray-800">头部 RGB</span>
+                  <span class="text-gray-500"><span id="head-size"></span> <a href="/robot-api/stream/head" target="_blank" class="hover:text-blue-600">↗ 放大</a></span>
+                </figcaption>
+              </figure>
+              <div class="grid grid-cols-[9fr_16fr_9fr] gap-3">
+                {% for name, label, aspect in [("left_wrist", "左腕相机", "aspect-[3/4]"), ("head_depth", "头部平滑深度", "aspect-[4/3]"), ("right_wrist", "右腕相机", "aspect-[3/4]")] %}
+                <figure class="{{ view }}">
+                  {# The depth is the processed one (FFS, what planning uses), polled from the grasp side; the wrists stream. #}
+                  {% if name == "head_depth" %}<a href="/grasp-api/api/depth/refined.jpg" target="_blank" class="relative block {{ aspect }} bg-gray-900"><img id="depth-image" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></a>
+                  {% else %}<a href="/robot-api/stream/{{ name }}" target="_blank" class="relative block {{ aspect }} bg-gray-900"><img src="/robot-api/stream/{{ name }}" class="absolute inset-0 h-full w-full object-contain" alt="{{ label }}" /></a>{% endif %}
+                  <figcaption class="flex items-center gap-2 px-3 py-1.5 text-xs"><span class="shrink-0 font-semibold text-gray-800">{{ label }}</span>{% if name == "head_depth" %}<span id="depth-note" class="min-w-0 truncate text-[11px] text-gray-500"></span>{% endif %}</figcaption>
+                </figure>
+                {% endfor %}
+              </div>
             </div>
-          </section>
-        </div>
 
-        <section id="rest-card" class="{{ card }}">
-          <div class="{{ card_head }}">
-            <h2 class="{{ card_title }}">停靠位</h2>
-            <div class="flex flex-wrap gap-2">
-              <button id="btn-rest" type="button" class="{{ button }}">去休息位</button>
-              <button id="btn-grasp-start" type="button" class="{{ button }}">去抓取位</button>
-              <button id="btn-record-rest" type="button" class="{{ button }}">把当前姿态记为休息位</button>
+            <!-- The right column is as tall as the cameras (absolute inside a stretched box); 运行状态 scrolls if it must. -->
+            <div class="relative min-w-0 lg:min-w-[516px] lg:max-w-[640px] lg:flex-1">
+            <div class="flex flex-col gap-4 lg:absolute lg:inset-0">
+              <!-- 控制面板 -->
+              <section class="{{ view }} px-4 py-4">
+                <h2 class="px-1 text-base font-bold text-gray-800">控制面板</h2>
+                <p id="keys-state" class="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-600">键盘控制已启用</p>
+                <div id="part-tabs" class="mt-3 grid grid-cols-4 gap-1 rounded-lg bg-gray-100 p-1" role="tablist" aria-label="屏幕按键控制的部件"></div>
+                <div id="part-keys" class="mt-3 flex gap-1.5"></div>
+                <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 px-1 text-xs">
+                  <span class="text-gray-500">Esc / 空格：停止 · 失去焦点即松开</span>
+                </div>
+              </section>
+
+              <!-- 运行状态 -->
+              <section class="{{ view }} min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                <div class="flex items-center gap-2 px-1">
+                  <h2 class="me-auto text-base font-bold text-gray-800">运行状态</h2>
+                  <!-- The arms' and head's joints as they are now become a dock; the robot process then restarts. -->
+                  <button id="btn-save-rest" type="button" class="{{ dock }}">保存为休息位</button>
+                  <button id="btn-save-grasp" type="button" class="{{ dock }}">保存为抓取位</button>
+                </div>
+                <!-- Per part: current joints and an editable target each; 执行 walks the part there (20°/s). -->
+                <ul id="parts" class="mt-3 grid grid-cols-2 gap-2.5"></ul>
+              </section>
+            </div>
             </div>
           </div>
-          <div id="rest-pose" class="grid gap-4 p-4 sm:grid-cols-3"></div>
-        </section>
+
+          <!-- 调试详情 · the dock actions -->
+          <details class="{{ view }}">
+            <summary class="flex cursor-pointer list-none flex-wrap items-center gap-2 px-4 py-2 text-sm text-gray-600">
+              <span class="me-auto">▸ 调试详情：关节表（当前 / 目标）· 休息位</span>
+              <span class="flex flex-wrap gap-2" title="上力矩要从休息位或抓取位开始；断力矩前先走回最近的停靠位。">
+                <button id="btn-rest" type="button" class="{{ dock }}">去休息位</button>
+                <button id="btn-grasp-start" type="button" class="{{ dock }}">去抓取位</button>
+                <button id="btn-dock-off" type="button" class="{{ dock }}">回到停靠位并关闭力矩</button>
+              </span>
+            </summary>
+            <div class="grid gap-4 border-t border-gray-200 p-4 lg:grid-cols-2">
+              <table class="min-w-full text-xs"><tbody id="joints" class="divide-y divide-gray-100 font-mono"></tbody></table>
+              <div id="rest-pose" class="grid gap-4 sm:grid-cols-3"></div>
+            </div>
+          </details>
+        </div>
 {% endblock %}
